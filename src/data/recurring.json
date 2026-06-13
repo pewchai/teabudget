@@ -1,0 +1,58 @@
+[
+  {
+    "nextDate": "2026-06-01",
+    "amount": 73.0,
+    "category": "Operations",
+    "description": "two public storages",
+    "periodMonths": 1
+  },
+  {
+    "nextDate": "2026-06-10",
+    "amount": 55.5,
+    "category": "Services",
+    "description": "at&t",
+    "periodMonths": 1
+  },
+  {
+    "nextDate": "2026-06-17",
+    "amount": 1.0,
+    "category": "Services",
+    "description": "icloud",
+    "periodMonths": 1
+  },
+  {
+    "nextDate": "2026-06-18",
+    "amount": 24.12,
+    "category": "Equipment",
+    "description": "iPhone 17",
+    "periodMonths": 1
+  },
+  {
+    "nextDate": "2026-09-15",
+    "amount": 800.0,
+    "category": "Operations",
+    "description": "car insurance",
+    "periodMonths": 6
+  },
+  {
+    "nextDate": "2028-05-31",
+    "amount": 47.76,
+    "category": "Services",
+    "description": "Proton mail",
+    "periodMonths": 24
+  },
+  {
+    "nextDate": "2027-03-30",
+    "amount": 19.99,
+    "category": "Services",
+    "description": "krickovsky.com 1-year",
+    "periodMonths": 12
+  },
+  {
+    "nextDate": "2027-03-10",
+    "amount": 19.99,
+    "category": "Services",
+    "description": "kriind.com 1-year",
+    "periodMonths": 12
+  }
+]
