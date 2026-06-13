@@ -32,7 +32,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-6 space-y-8 max-w-2xl">
+    <div className="p-4 md:p-6 space-y-8 max-w-2xl">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
         <p className="text-gray-500 text-sm mt-1">Manage categories, names, and colors</p>

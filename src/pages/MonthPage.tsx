@@ -1,10 +1,23 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useBudget, getMonthTransactions, sumByCategory } from '../store/BudgetContext';
-import { MONTH_NAMES } from '../types';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { MONTH_NAMES, type Transaction } from '../types';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid,
+} from 'recharts';
 
 const YEAR = 2026;
+const EDIT_CELL = 'w-full bg-blue-50 border-b border-blue-300 px-1 py-0.5 text-sm focus:outline-none focus:bg-blue-100';
+
+type ChartView = 'budget-actual' | 'spending-pie' | 'daily-spending' | 'category-totals';
+
+const CHART_OPTIONS: { value: ChartView; label: string }[] = [
+  { value: 'budget-actual', label: 'Budget vs Actual' },
+  { value: 'spending-pie', label: 'Spending Breakdown' },
+  { value: 'daily-spending', label: 'Daily Spending' },
+  { value: 'category-totals', label: 'Category Totals' },
+];
 
 export default function MonthPage() {
   const { month: monthStr } = useParams<{ month: string }>();
@@ -38,62 +51,155 @@ export default function MonthPage() {
     .map(r => ({ name: r.cat, Budget: r.budget, Actual: r.actual }));
   const pieData = rows.filter(r => r.actual > 0).map(r => ({ name: r.cat, value: r.actual }));
 
+  const dailyData = useMemo(() => {
+    const dim = new Date(YEAR, month, 0).getDate();
+    return Array.from({ length: dim }, (_, i) => {
+      const d = i + 1;
+      const dateStr = `${YEAR}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const total = txs.filter(t => t.date === dateStr).reduce((s, t) => s + t.amount, 0);
+      return { day: d, amount: Math.round(total * 100) / 100 };
+    });
+  }, [txs, month]);
+
+  const categoryTotals = useMemo(() =>
+    catNames
+      .map(cat => ({ name: cat, value: Math.round((actuals[cat] ?? 0) * 100) / 100 }))
+      .filter(d => d.value > 0)
+      .sort((a, b) => b.value - a.value),
+    [actuals, catNames]
+  );
+
+  const [chartView, setChartView] = useState<ChartView>('budget-actual');
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editVal, setEditVal] = useState('');
 
-  function startEdit(cat: string, current: number) { setEditingCat(cat); setEditVal(String(current)); }
-  function commitEdit(cat: string) {
+  function startBudgetEdit(cat: string, current: number) { setEditingCat(cat); setEditVal(String(current)); }
+  function commitBudgetEdit(cat: string) {
     const val = parseFloat(editVal);
     if (!isNaN(val) && val >= 0) dispatch({ type: 'SET_BUDGET', monthKey, category: cat, amount: val });
     setEditingCat(null);
   }
 
+  // Transaction inline editing
+  const [txEditingId, setTxEditingId] = useState<string | null>(null);
+  const [txEditForm, setTxEditForm] = useState({ date: '', amount: '', category: '', description: '' });
+
   const isRecurring = (id: string) => id.startsWith('rec-');
 
+  const editableTxs = useMemo(() => txs.filter(t => !isRecurring(t.id)), [txs]);
+  const txEditIdx = useMemo(
+    () => txEditingId ? editableTxs.findIndex(t => t.id === txEditingId) : -1,
+    [txEditingId, editableTxs]
+  );
+
+  function startTxEdit(tx: Transaction) {
+    if (isRecurring(tx.id)) return;
+    setTxEditingId(tx.id);
+    setTxEditForm({ date: tx.date, amount: String(tx.amount), category: tx.category, description: tx.description });
+  }
+
+  const saveTxEdit = useCallback(() => {
+    if (!txEditingId) return;
+    const amount = parseFloat(txEditForm.amount);
+    if (!isNaN(amount) && txEditForm.date && txEditForm.category) {
+      dispatch({ type: 'UPDATE_TRANSACTION', tx: { id: txEditingId, date: txEditForm.date, amount, category: txEditForm.category, description: txEditForm.description } });
+    }
+    setTxEditingId(null);
+  }, [txEditingId, txEditForm, dispatch]);
+
+  function navigateTxRow(dir: 1 | -1) {
+    saveTxEdit();
+    const next = txEditIdx + dir;
+    if (next >= 0 && next < editableTxs.length) {
+      const tx = editableTxs[next];
+      setTxEditingId(tx.id);
+      setTxEditForm({ date: tx.date, amount: String(tx.amount), category: tx.category, description: tx.description });
+    }
+  }
+
+  function handleTxEditKey(e: React.KeyboardEvent) {
+    if (e.key === 'Escape') setTxEditingId(null);
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); navigateTxRow(1); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); navigateTxRow(1); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); navigateTxRow(-1); }
+  }
+
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-4 md:p-6 space-y-8">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">{monthName} 2026</h2>
         <p className="text-gray-500 text-sm mt-1">{txs.length} transactions · ${totalActual.toFixed(2)} spent</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
-          <h3 className="font-semibold text-gray-700 mb-4">Budget vs Actual</h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={barData} layout="vertical" barCategoryGap="25%">
-              <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => `$${v}`} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={72} />
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              <Tooltip formatter={(v: any) => `$${Number(v).toFixed(2)}`} />
-              <Bar dataKey="Budget" fill="#e5e7eb" radius={[0, 4, 4, 0]} />
-              <Bar dataKey="Actual" radius={[0, 4, 4, 0]}>
-                {barData.map(e => <Cell key={e.name} fill={colorMap[e.name] ?? '#9ca3af'} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Chart panel with dropdown */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-700">
+            {CHART_OPTIONS.find(o => o.value === chartView)?.label}
+          </h3>
+          <select
+            value={chartView}
+            onChange={e => setChartView(e.target.value as ChartView)}
+            className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {CHART_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
-          <h3 className="font-semibold text-gray-700 mb-4">Spending Breakdown</h3>
-          {pieData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={240}>
-              <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" cx="40%" cy="50%" outerRadius={90} innerRadius={50}>
-                  {pieData.map(e => <Cell key={e.name} fill={colorMap[e.name] ?? '#9ca3af'} />)}
-                </Pie>
+        <div className="h-52 md:h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            {chartView === 'budget-actual' ? (
+              <BarChart data={barData} layout="vertical" barCategoryGap="25%">
+                <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => `$${v}`} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={72} />
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 <Tooltip formatter={(v: any) => `$${Number(v).toFixed(2)}`} />
-                <Legend layout="vertical" align="right" verticalAlign="middle" iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-gray-400 text-sm text-center mt-16">No transactions yet</p>
-          )}
+                <Bar dataKey="Budget" fill="#e5e7eb" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="Actual" radius={[0, 4, 4, 0]}>
+                  {barData.map(e => <Cell key={e.name} fill={colorMap[e.name] ?? '#9ca3af'} />)}
+                </Bar>
+              </BarChart>
+            ) : chartView === 'spending-pie' ? (
+              pieData.length > 0 ? (
+                <PieChart>
+                  <Pie data={pieData} dataKey="value" nameKey="name" cx="40%" cy="50%" outerRadius={90} innerRadius={50}>
+                    {pieData.map(e => <Cell key={e.name} fill={colorMap[e.name] ?? '#9ca3af'} />)}
+                  </Pie>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  <Tooltip formatter={(v: any) => `$${Number(v).toFixed(2)}`} />
+                  <Legend layout="vertical" align="right" verticalAlign="middle" iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              ) : (
+                <BarChart data={[]}>
+                  <text x="50%" y="50%" textAnchor="middle" fill="#9ca3af" fontSize={13}>No transactions yet</text>
+                </BarChart>
+              )
+            ) : chartView === 'daily-spending' ? (
+              <LineChart data={dailyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                <XAxis dataKey="day" tick={{ fontSize: 11 }} tickFormatter={d => String(d)} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `$${v}`} />
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                <Tooltip formatter={(v: any) => `$${Number(v).toFixed(2)}`} labelFormatter={d => `Day ${d}`} />
+                <Line type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={2} dot={false} />
+              </LineChart>
+            ) : (
+              <BarChart data={categoryTotals} layout="vertical" barCategoryGap="25%">
+                <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => `$${v}`} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={72} />
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                <Tooltip formatter={(v: any) => `$${Number(v).toFixed(2)}`} />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                  {categoryTotals.map(e => <Cell key={e.name} fill={colorMap[e.name] ?? '#9ca3af'} />)}
+                </Bar>
+              </BarChart>
+            )}
+          </ResponsiveContainer>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      {/* Budget table */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
@@ -114,18 +220,18 @@ export default function MonthPage() {
                   {editingCat === cat ? (
                     <input type="number" step="0.01" value={editVal}
                       onChange={e => setEditVal(e.target.value)}
-                      onBlur={() => commitEdit(cat)}
-                      onKeyDown={e => e.key === 'Enter' && commitEdit(cat)}
+                      onBlur={() => commitBudgetEdit(cat)}
+                      onKeyDown={e => e.key === 'Enter' && commitBudgetEdit(cat)}
                       autoFocus className="w-24 text-right border border-blue-400 rounded px-2 py-1 text-sm focus:outline-none" />
                   ) : (
-                    <button onClick={() => startEdit(cat, budget)} className="text-gray-700 hover:text-blue-600 font-medium" title="Click to edit">
+                    <button onClick={() => startBudgetEdit(cat, budget)} className="text-gray-700 hover:text-blue-600 font-medium" title="Click to edit">
                       ${budget.toFixed(2)}
                     </button>
                   )}
                 </td>
                 <td className="px-5 py-3 text-right font-semibold text-gray-900">${actual.toFixed(2)}</td>
-                <td className={`px-5 py-3 text-right font-semibold ${diff < 0 ? 'text-red-500' : budget === 0 && actual === 0 ? 'text-gray-300' : 'text-emerald-600'}`}>
-                  {budget === 0 && actual === 0 ? '—' : `${diff < 0 ? '-' : '+'}$${Math.abs(diff).toFixed(2)}`}
+                <td className={`px-5 py-3 text-right font-semibold ${diff < 0 ? 'text-red-500' : budget === 0 && actual === 0 ? 'text-gray-300' : 'text-gray-700'}`}>
+                  {budget === 0 && actual === 0 ? '—' : `${diff < 0 ? '-' : ''}$${Math.abs(diff).toFixed(2)}`}
                 </td>
               </tr>
             ))}
@@ -135,32 +241,58 @@ export default function MonthPage() {
               <td className="px-5 py-3 text-gray-800">Total</td>
               <td className="px-5 py-3 text-right text-gray-800">${totalBudget.toFixed(2)}</td>
               <td className="px-5 py-3 text-right text-gray-900">${totalActual.toFixed(2)}</td>
-              <td className={`px-5 py-3 text-right ${totalDiff < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-                {totalDiff < 0 ? '-' : '+'}${Math.abs(totalDiff).toFixed(2)}
+              <td className={`px-5 py-3 text-right ${totalDiff < 0 ? 'text-red-500' : 'text-gray-700'}`}>
+                {totalDiff < 0 ? '-' : ''}${Math.abs(totalDiff).toFixed(2)}
               </td>
             </tr>
           </tfoot>
         </table>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      {/* Transactions with inline editing */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden overflow-x-auto">
         <div className="px-5 py-4 border-b border-gray-100">
           <h3 className="font-semibold text-gray-700">Transactions</h3>
         </div>
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="text-left px-5 py-2 text-xs font-semibold text-gray-500 uppercase">Date</th>
-              <th className="text-right px-5 py-2 text-xs font-semibold text-gray-500 uppercase">Amount</th>
-              <th className="text-left px-5 py-2 text-xs font-semibold text-gray-500 uppercase">Category</th>
+              <th className="text-left px-5 py-2 text-xs font-semibold text-gray-500 uppercase w-24">Date</th>
+              <th className="text-right px-5 py-2 text-xs font-semibold text-gray-500 uppercase w-28">Amount</th>
+              <th className="text-left px-5 py-2 text-xs font-semibold text-gray-500 uppercase w-32">Category</th>
               <th className="text-left px-5 py-2 text-xs font-semibold text-gray-500 uppercase">Description</th>
+              <th className="w-8 px-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {txs.map(tx => {
               const color = colorMap[tx.category] ?? '#9ca3af';
+              const editable = !isRecurring(tx.id);
+              const isEditing = txEditingId === tx.id;
+
+              if (isEditing) {
+                return (
+                  <tr key={tx.id} className="bg-blue-50" onKeyDown={handleTxEditKey}>
+                    <td className="px-2 py-1"><input type="date" className={EDIT_CELL} autoFocus value={txEditForm.date} onChange={e => setTxEditForm(f => ({ ...f, date: e.target.value }))} /></td>
+                    <td className="px-2 py-1"><input type="number" step="0.01" className={`${EDIT_CELL} text-right`} value={txEditForm.amount} onChange={e => setTxEditForm(f => ({ ...f, amount: e.target.value }))} /></td>
+                    <td className="px-2 py-1">
+                      <select className={`${EDIT_CELL} cursor-pointer`} value={txEditForm.category} onChange={e => setTxEditForm(f => ({ ...f, category: e.target.value }))}>
+                        {catNames.map(c => <option key={c}>{c}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-2 py-1"><input type="text" className={EDIT_CELL} value={txEditForm.description} onChange={e => setTxEditForm(f => ({ ...f, description: e.target.value }))} /></td>
+                    <td className="px-2 py-1 text-right whitespace-nowrap">
+                      <button onClick={saveTxEdit} className="text-blue-600 text-xs font-medium hover:underline mr-1">✓</button>
+                      <button onClick={() => setTxEditingId(null)} className="text-gray-400 text-xs hover:text-red-500">✕</button>
+                    </td>
+                  </tr>
+                );
+              }
+
               return (
-                <tr key={tx.id} className="hover:bg-gray-50">
+                <tr key={tx.id}
+                  className={`hover:bg-gray-50 group ${editable ? 'cursor-pointer' : ''}`}
+                  onClick={() => editable && startTxEdit(tx)}>
                   <td className="px-5 py-2.5 text-gray-500 font-mono text-xs">{tx.date.slice(5)}</td>
                   <td className="px-5 py-2.5 text-right font-medium text-gray-900">${tx.amount.toFixed(2)}</td>
                   <td className="px-5 py-2.5">
@@ -171,15 +303,22 @@ export default function MonthPage() {
                     {tx.description}
                     {isRecurring(tx.id) && <span className="ml-2 text-xs text-gray-400 italic">recurring</span>}
                   </td>
+                  <td className="px-2 py-2.5 text-right">
+                    {editable && (
+                      <button onClick={e => { e.stopPropagation(); dispatch({ type: 'DELETE_TRANSACTION', id: tx.id }); }}
+                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all">✕</button>
+                    )}
+                  </td>
                 </tr>
               );
             })}
             {txs.length === 0 && (
-              <tr><td colSpan={4} className="px-5 py-8 text-center text-gray-400">No transactions for {monthName}</td></tr>
+              <tr><td colSpan={5} className="px-5 py-8 text-center text-gray-400">No transactions for {monthName}</td></tr>
             )}
           </tbody>
         </table>
       </div>
+      {txEditingId && <p className="text-xs text-gray-400 text-center">↑ ↓ or Enter to move between rows · Esc to cancel</p>}
     </div>
   );
 }

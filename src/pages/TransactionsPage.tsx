@@ -83,7 +83,7 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Transactions</h2>
         <p className="text-gray-500 text-sm mt-1">{state.transactions.length} entries</p>
@@ -91,7 +91,7 @@ export default function TransactionsPage() {
 
       {/* Add form — always visible */}
       <form onSubmit={handleAdd} className="bg-white border border-gray-200 rounded-xl p-5">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="block">
             <span className="text-xs font-medium text-gray-500 uppercase">Date</span>
             <input type="date" required value={newForm.date}
@@ -140,7 +140,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* Table with inline editing */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
