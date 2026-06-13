@@ -5,6 +5,7 @@ import OverviewPage from './pages/OverviewPage';
 import TransactionsPage from './pages/TransactionsPage';
 import RecurringPage from './pages/RecurringPage';
 import MonthPage from './pages/MonthPage';
+import SettingsPage from './pages/SettingsPage';
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
               <Route path="/transactions" element={<TransactionsPage />} />
               <Route path="/recurring" element={<RecurringPage />} />
               <Route path="/month/:month" element={<MonthPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </main>
         </div>

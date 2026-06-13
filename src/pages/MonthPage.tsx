@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useBudget, getMonthTransactions, sumByCategory } from '../store/BudgetContext';
-import { CATEGORIES, MONTH_NAMES, CATEGORY_COLORS, type Category } from '../types';
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
-} from 'recharts';
+import { MONTH_NAMES } from '../types';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 const YEAR = 2026;
 
@@ -16,16 +13,17 @@ export default function MonthPage() {
   const monthName = MONTH_NAMES[month - 1];
 
   const { state, dispatch } = useBudget();
-  const monthBudgets = (state.budgets[monthKey] ?? {}) as Partial<Record<Category, number>>;
+  const colorMap = useMemo(() => Object.fromEntries(state.categories.map(c => [c.name, c.color])), [state.categories]);
+  const catNames = useMemo(() => state.categories.map(c => c.name), [state.categories]);
+  const monthBudgets = (state.budgets[monthKey] ?? {}) as Record<string, number>;
 
   const txs = useMemo(
     () => getMonthTransactions(state.transactions, state.recurring, YEAR, month),
     [state.transactions, state.recurring, month]
   );
-
   const actuals = useMemo(() => sumByCategory(txs), [txs]);
 
-  const rows = CATEGORIES.map(cat => ({
+  const rows = catNames.map(cat => ({
     cat,
     budget: monthBudgets[cat] ?? 0,
     actual: Math.round((actuals[cat] ?? 0) * 100) / 100,
@@ -36,31 +34,21 @@ export default function MonthPage() {
   const totalActual = rows.reduce((s, r) => s + r.actual, 0);
   const totalDiff = totalBudget - totalActual;
 
-  const barData = rows
-    .filter(r => r.budget > 0 || r.actual > 0)
+  const barData = rows.filter(r => r.budget > 0 || r.actual > 0)
     .map(r => ({ name: r.cat, Budget: r.budget, Actual: r.actual }));
+  const pieData = rows.filter(r => r.actual > 0).map(r => ({ name: r.cat, value: r.actual }));
 
-  const pieData = rows
-    .filter(r => r.actual > 0)
-    .map(r => ({ name: r.cat, value: r.actual }));
-
-  const [editingCat, setEditingCat] = useState<Category | null>(null);
+  const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editVal, setEditVal] = useState('');
 
-  function startEdit(cat: Category, current: number) {
-    setEditingCat(cat);
-    setEditVal(String(current));
-  }
-
-  function commitEdit(cat: Category) {
+  function startEdit(cat: string, current: number) { setEditingCat(cat); setEditVal(String(current)); }
+  function commitEdit(cat: string) {
     const val = parseFloat(editVal);
-    if (!isNaN(val) && val >= 0) {
-      dispatch({ type: 'SET_BUDGET', monthKey, category: cat, amount: val });
-    }
+    if (!isNaN(val) && val >= 0) dispatch({ type: 'SET_BUDGET', monthKey, category: cat, amount: val });
     setEditingCat(null);
   }
 
-  const isRecurring = (id: string) => id.startsWith('recurring-');
+  const isRecurring = (id: string) => id.startsWith('rec-');
 
   return (
     <div className="p-6 space-y-8">
@@ -69,7 +57,6 @@ export default function MonthPage() {
         <p className="text-gray-500 text-sm mt-1">{txs.length} transactions · ${totalActual.toFixed(2)} spent</p>
       </div>
 
-      {/* Charts */}
       <div className="grid grid-cols-2 gap-6">
         <div className="bg-white border border-gray-200 rounded-xl p-5">
           <h3 className="font-semibold text-gray-700 mb-4">Budget vs Actual</h3>
@@ -81,9 +68,7 @@ export default function MonthPage() {
               <Tooltip formatter={(v: any) => `$${Number(v).toFixed(2)}`} />
               <Bar dataKey="Budget" fill="#e5e7eb" radius={[0, 4, 4, 0]} />
               <Bar dataKey="Actual" radius={[0, 4, 4, 0]}>
-                {barData.map(entry => (
-                  <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name as Category]} />
-                ))}
+                {barData.map(e => <Cell key={e.name} fill={colorMap[e.name] ?? '#9ca3af'} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -95,9 +80,7 @@ export default function MonthPage() {
             <ResponsiveContainer width="100%" height={240}>
               <PieChart>
                 <Pie data={pieData} dataKey="value" nameKey="name" cx="40%" cy="50%" outerRadius={90} innerRadius={50}>
-                  {pieData.map(entry => (
-                    <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name as Category]} />
-                  ))}
+                  {pieData.map(e => <Cell key={e.name} fill={colorMap[e.name] ?? '#9ca3af'} />)}
                 </Pie>
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 <Tooltip formatter={(v: any) => `$${Number(v).toFixed(2)}`} />
@@ -110,7 +93,6 @@ export default function MonthPage() {
         </div>
       </div>
 
-      {/* Budget table */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -125,33 +107,24 @@ export default function MonthPage() {
             {rows.map(({ cat, budget, actual, diff }) => (
               <tr key={cat} className="hover:bg-gray-50">
                 <td className="px-5 py-3 font-medium text-gray-800">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full mr-2" style={{ backgroundColor: CATEGORY_COLORS[cat] }} />
+                  <span className="inline-block w-2.5 h-2.5 rounded-full mr-2" style={{ backgroundColor: colorMap[cat] ?? '#9ca3af' }} />
                   {cat}
                 </td>
                 <td className="px-5 py-3 text-right">
                   {editingCat === cat ? (
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editVal}
+                    <input type="number" step="0.01" value={editVal}
                       onChange={e => setEditVal(e.target.value)}
                       onBlur={() => commitEdit(cat)}
                       onKeyDown={e => e.key === 'Enter' && commitEdit(cat)}
-                      autoFocus
-                      className="w-24 text-right border border-blue-400 rounded px-2 py-1 text-sm focus:outline-none"
-                    />
+                      autoFocus className="w-24 text-right border border-blue-400 rounded px-2 py-1 text-sm focus:outline-none" />
                   ) : (
-                    <button
-                      onClick={() => startEdit(cat, budget)}
-                      className="text-gray-700 hover:text-blue-600 font-medium"
-                      title="Click to edit"
-                    >
+                    <button onClick={() => startEdit(cat, budget)} className="text-gray-700 hover:text-blue-600 font-medium" title="Click to edit">
                       ${budget.toFixed(2)}
                     </button>
                   )}
                 </td>
                 <td className="px-5 py-3 text-right font-semibold text-gray-900">${actual.toFixed(2)}</td>
-                <td className={`px-5 py-3 text-right font-semibold ${diff < 0 ? 'text-red-500' : diff === 0 && budget === 0 ? 'text-gray-300' : 'text-emerald-600'}`}>
+                <td className={`px-5 py-3 text-right font-semibold ${diff < 0 ? 'text-red-500' : budget === 0 && actual === 0 ? 'text-gray-300' : 'text-emerald-600'}`}>
                   {budget === 0 && actual === 0 ? '—' : `${diff < 0 ? '-' : '+'}$${Math.abs(diff).toFixed(2)}`}
                 </td>
               </tr>
@@ -170,7 +143,6 @@ export default function MonthPage() {
         </table>
       </div>
 
-      {/* Transactions for this month */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100">
           <h3 className="font-semibold text-gray-700">Transactions</h3>
@@ -185,26 +157,23 @@ export default function MonthPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {txs.map(tx => (
-              <tr key={tx.id} className="hover:bg-gray-50">
-                <td className="px-5 py-2.5 text-gray-500 font-mono text-xs">{tx.date.slice(5)}</td>
-                <td className="px-5 py-2.5 text-right font-medium text-gray-900">${tx.amount.toFixed(2)}</td>
-                <td className="px-5 py-2.5">
-                  <span
-                    className="inline-block rounded-md px-1.5 py-0.5 text-xs font-medium"
-                    style={{ backgroundColor: CATEGORY_COLORS[tx.category] + '22', color: CATEGORY_COLORS[tx.category] }}
-                  >
-                    {tx.category}
-                  </span>
-                </td>
-                <td className="px-5 py-2.5 text-gray-700">
-                  {tx.description}
-                  {isRecurring(tx.id) && (
-                    <span className="ml-2 text-xs text-gray-400 italic">recurring</span>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {txs.map(tx => {
+              const color = colorMap[tx.category] ?? '#9ca3af';
+              return (
+                <tr key={tx.id} className="hover:bg-gray-50">
+                  <td className="px-5 py-2.5 text-gray-500 font-mono text-xs">{tx.date.slice(5)}</td>
+                  <td className="px-5 py-2.5 text-right font-medium text-gray-900">${tx.amount.toFixed(2)}</td>
+                  <td className="px-5 py-2.5">
+                    <span className="inline-block rounded-md px-1.5 py-0.5 text-xs font-medium"
+                      style={{ backgroundColor: color + '22', color }}>{tx.category}</span>
+                  </td>
+                  <td className="px-5 py-2.5 text-gray-700">
+                    {tx.description}
+                    {isRecurring(tx.id) && <span className="ml-2 text-xs text-gray-400 italic">recurring</span>}
+                  </td>
+                </tr>
+              );
+            })}
             {txs.length === 0 && (
               <tr><td colSpan={4} className="px-5 py-8 text-center text-gray-400">No transactions for {monthName}</td></tr>
             )}

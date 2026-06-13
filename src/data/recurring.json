@@ -4,20 +4,23 @@
     "amount": 73.00,
     "category": "Operations",
     "description": "storage unit",
-    "periodMonths": 1
+    "frequencyType": "months",
+    "frequencyValue": 1
   },
   {
     "startDate": "2026-06-10",
     "amount": 55.50,
     "category": "Services",
     "description": "AT&T",
-    "periodMonths": 1
+    "frequencyType": "months",
+    "frequencyValue": 1
   },
   {
     "startDate": "2026-09-15",
     "amount": 800.00,
     "category": "Operations",
     "description": "car insurance",
-    "periodMonths": 6
+    "frequencyType": "months",
+    "frequencyValue": 6
   }
 ]
