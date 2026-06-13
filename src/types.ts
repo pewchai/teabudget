@@ -25,11 +25,11 @@ export interface Transaction {
 
 export interface RecurringItem {
   id: string;
-  nextDate: string; // YYYY-MM-DD — next occurrence
+  startDate: string; // YYYY-MM-DD — first occurrence (anchors the schedule)
   amount: number;
   category: Category;
   description: string;
-  periodMonths: number; // recurrence interval
+  periodMonths: number; // recurrence interval in months
 }
 
 export type MonthlyBudgets = Record<Category, number>;

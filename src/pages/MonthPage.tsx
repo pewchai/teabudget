@@ -19,8 +19,8 @@ export default function MonthPage() {
   const monthBudgets = (state.budgets[monthKey] ?? {}) as Partial<Record<Category, number>>;
 
   const txs = useMemo(
-    () => getMonthTransactions(state.transactions, YEAR, month).sort((a, b) => a.date.localeCompare(b.date)),
-    [state.transactions, month]
+    () => getMonthTransactions(state.transactions, state.recurring, YEAR, month),
+    [state.transactions, state.recurring, month]
   );
 
   const actuals = useMemo(() => sumByCategory(txs), [txs]);
@@ -60,6 +60,8 @@ export default function MonthPage() {
     setEditingCat(null);
   }
 
+  const isRecurring = (id: string) => id.startsWith('recurring-');
+
   return (
     <div className="p-6 space-y-8">
       <div>
@@ -67,7 +69,7 @@ export default function MonthPage() {
         <p className="text-gray-500 text-sm mt-1">{txs.length} transactions · ${totalActual.toFixed(2)} spent</p>
       </div>
 
-      {/* Charts row */}
+      {/* Charts */}
       <div className="grid grid-cols-2 gap-6">
         <div className="bg-white border border-gray-200 rounded-xl p-5">
           <h3 className="font-semibold text-gray-700 mb-4">Budget vs Actual</h3>
@@ -75,15 +77,12 @@ export default function MonthPage() {
             <BarChart data={barData} layout="vertical" barCategoryGap="25%">
               <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => `$${v}`} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={72} />
-              <Tooltip // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            formatter={(v: any) => `$${Number(v).toFixed(2)}`} />
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              <Tooltip formatter={(v: any) => `$${Number(v).toFixed(2)}`} />
               <Bar dataKey="Budget" fill="#e5e7eb" radius={[0, 4, 4, 0]} />
               <Bar dataKey="Actual" radius={[0, 4, 4, 0]}>
                 {barData.map(entry => (
-                  <Cell
-                    key={entry.name}
-                    fill={CATEGORY_COLORS[entry.name as Category]}
-                  />
+                  <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name as Category]} />
                 ))}
               </Bar>
             </BarChart>
@@ -100,8 +99,8 @@ export default function MonthPage() {
                     <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name as Category]} />
                   ))}
                 </Pie>
-                <Tooltip // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            formatter={(v: any) => `$${Number(v).toFixed(2)}`} />
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                <Tooltip formatter={(v: any) => `$${Number(v).toFixed(2)}`} />
                 <Legend layout="vertical" align="right" verticalAlign="middle" iconSize={10} wrapperStyle={{ fontSize: 11 }} />
               </PieChart>
             </ResponsiveContainer>
@@ -145,17 +144,15 @@ export default function MonthPage() {
                     <button
                       onClick={() => startEdit(cat, budget)}
                       className="text-gray-700 hover:text-blue-600 font-medium"
-                      title="Click to edit budget"
+                      title="Click to edit"
                     >
                       ${budget.toFixed(2)}
                     </button>
                   )}
                 </td>
-                <td className="px-5 py-3 text-right font-semibold text-gray-900">
-                  ${actual.toFixed(2)}
-                </td>
-                <td className={`px-5 py-3 text-right font-semibold ${diff < 0 ? 'text-red-500' : diff === 0 ? 'text-gray-400' : 'text-emerald-600'}`}>
-                  {diff < 0 ? '-' : '+'}${Math.abs(diff).toFixed(2)}
+                <td className="px-5 py-3 text-right font-semibold text-gray-900">${actual.toFixed(2)}</td>
+                <td className={`px-5 py-3 text-right font-semibold ${diff < 0 ? 'text-red-500' : diff === 0 && budget === 0 ? 'text-gray-300' : 'text-emerald-600'}`}>
+                  {budget === 0 && actual === 0 ? '—' : `${diff < 0 ? '-' : '+'}$${Math.abs(diff).toFixed(2)}`}
                 </td>
               </tr>
             ))}
@@ -193,11 +190,19 @@ export default function MonthPage() {
                 <td className="px-5 py-2.5 text-gray-500 font-mono text-xs">{tx.date.slice(5)}</td>
                 <td className="px-5 py-2.5 text-right font-medium text-gray-900">${tx.amount.toFixed(2)}</td>
                 <td className="px-5 py-2.5">
-                  <span className="inline-block rounded-md px-1.5 py-0.5 text-xs font-medium" style={{ backgroundColor: CATEGORY_COLORS[tx.category] + '22', color: CATEGORY_COLORS[tx.category] }}>
+                  <span
+                    className="inline-block rounded-md px-1.5 py-0.5 text-xs font-medium"
+                    style={{ backgroundColor: CATEGORY_COLORS[tx.category] + '22', color: CATEGORY_COLORS[tx.category] }}
+                  >
                     {tx.category}
                   </span>
                 </td>
-                <td className="px-5 py-2.5 text-gray-700">{tx.description}</td>
+                <td className="px-5 py-2.5 text-gray-700">
+                  {tx.description}
+                  {isRecurring(tx.id) && (
+                    <span className="ml-2 text-xs text-gray-400 italic">recurring</span>
+                  )}
+                </td>
               </tr>
             ))}
             {txs.length === 0 && (

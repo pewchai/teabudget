@@ -1,30 +1,23 @@
 import { useState } from 'react';
-import { useBudget } from '../store/BudgetContext';
-import { CATEGORIES, type Category, type RecurringItem, type Transaction } from '../types';
+import { useBudget, nextOccurrenceDate } from '../store/BudgetContext';
+import { CATEGORIES, type Category, type RecurringItem } from '../types';
 import { nanoid } from 'nanoid';
 
-function addMonths(dateStr: string, months: number): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setMonth(d.getMonth() + months);
-  return d.toISOString().slice(0, 10);
-}
-
-function fmt(date: string) {
-  const [y, m, d] = date.split('-');
-  return `${m}/${d}/${y.slice(2)}`;
-}
-
-function monthlyEquiv(amount: number, period: number) {
-  return (amount / period).toFixed(2);
-}
-
 const EMPTY_FORM = {
-  nextDate: new Date().toISOString().slice(0, 10),
+  startDate: new Date().toISOString().slice(0, 10),
   amount: '',
   category: 'Services' as Category,
   description: '',
   periodMonths: '1',
 };
+
+function periodLabel(months: number) {
+  if (months === 1) return 'Monthly';
+  if (months === 12) return 'Yearly';
+  if (months === 6) return 'Every 6 mo';
+  if (months === 3) return 'Quarterly';
+  return `Every ${months} mo`;
+}
 
 export default function RecurringPage() {
   const { state, dispatch } = useBudget();
@@ -40,7 +33,7 @@ export default function RecurringPage() {
     e.preventDefault();
     const item: RecurringItem = {
       id: nanoid(),
-      nextDate: form.nextDate,
+      startDate: form.startDate,
       amount: parseFloat(form.amount),
       category: form.category,
       description: form.description,
@@ -51,20 +44,6 @@ export default function RecurringPage() {
     setShowForm(false);
   }
 
-  function handlePost(item: RecurringItem) {
-    const tx: Transaction = {
-      id: nanoid(),
-      date: item.nextDate,
-      amount: item.amount,
-      category: item.category,
-      description: item.description,
-    };
-    dispatch({ type: 'ADD_TRANSACTION', tx });
-    // Advance next date
-    const updated: RecurringItem = { ...item, nextDate: addMonths(item.nextDate, item.periodMonths) };
-    dispatch({ type: 'UPDATE_RECURRING', item: updated });
-  }
-
   const today = new Date().toISOString().slice(0, 10);
 
   return (
@@ -72,7 +51,9 @@ export default function RecurringPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Recurring</h2>
-          <p className="text-gray-500 text-sm mt-1">≈ ${totalMonthly.toFixed(2)} / month</p>
+          <p className="text-gray-500 text-sm mt-1">
+            ≈ ${totalMonthly.toFixed(2)} / month · automatically added to each month's transactions
+          </p>
         </div>
         <button
           onClick={() => setShowForm(v => !v)}
@@ -87,12 +68,12 @@ export default function RecurringPage() {
           <h3 className="font-semibold text-gray-800">New Recurring Item</h3>
           <div className="grid grid-cols-2 gap-4">
             <label className="block">
-              <span className="text-xs font-medium text-gray-500 uppercase">Next Date</span>
+              <span className="text-xs font-medium text-gray-500 uppercase">First billing date</span>
               <input
                 type="date"
                 required
-                value={form.nextDate}
-                onChange={e => setForm(f => ({ ...f, nextDate: e.target.value }))}
+                value={form.startDate}
+                onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
                 className="mt-1 block w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </label>
@@ -120,7 +101,7 @@ export default function RecurringPage() {
               </select>
             </label>
             <label className="block">
-              <span className="text-xs font-medium text-gray-500 uppercase">Period (months)</span>
+              <span className="text-xs font-medium text-gray-500 uppercase">Repeats every (months)</span>
               <input
                 type="number"
                 min="1"
@@ -157,59 +138,57 @@ export default function RecurringPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Next Date</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Amount</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Monthly</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Category</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Description</th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Period</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Category</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Amount</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Monthly cost</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Frequency</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Next billing</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {state.recurring.map(item => {
-              const due = item.nextDate <= today;
+              const next = nextOccurrenceDate(item);
+              const due = next <= today;
               return (
-                <tr key={item.id} className={`hover:bg-gray-50 group ${due ? 'bg-amber-50' : ''}`}>
-                  <td className={`px-4 py-3 font-mono text-xs ${due ? 'text-amber-600 font-semibold' : 'text-gray-500'}`}>
-                    {fmt(item.nextDate)} {due && '⚠'}
+                <tr key={item.id} className="hover:bg-gray-50 group">
+                  <td className="px-4 py-3 font-medium text-gray-800">{item.description}</td>
+                  <td className="px-4 py-3">
+                    <span className="bg-gray-100 text-gray-700 rounded-md px-2 py-0.5 text-xs font-medium">
+                      {item.category}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-right font-semibold text-gray-900">${item.amount.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right text-gray-500 text-xs">${monthlyEquiv(item.amount, item.periodMonths)}</td>
-                  <td className="px-4 py-3">
-                    <span className="bg-gray-100 text-gray-700 rounded-md px-2 py-0.5 text-xs font-medium">{item.category}</span>
+                  <td className="px-4 py-3 text-right text-gray-500 text-xs">
+                    ${(item.amount / item.periodMonths).toFixed(2)}
                   </td>
-                  <td className="px-4 py-3 text-gray-700">{item.description}</td>
-                  <td className="px-4 py-3 text-center text-gray-500 text-xs">
-                    {item.periodMonths === 1 ? 'Monthly' : item.periodMonths === 12 ? 'Yearly' : `${item.periodMonths}mo`}
+                  <td className="px-4 py-3 text-center text-gray-500 text-xs">{periodLabel(item.periodMonths)}</td>
+                  <td className={`px-4 py-3 font-mono text-xs ${due ? 'text-amber-600 font-semibold' : 'text-gray-500'}`}>
+                    {next} {due && '⚠'}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                      <button
-                        onClick={() => handlePost(item)}
-                        className="text-xs text-blue-600 hover:underline font-medium"
-                        title="Post to transactions & advance date"
-                      >
-                        Post
-                      </button>
-                      <button
-                        onClick={() => dispatch({ type: 'DELETE_RECURRING', id: item.id })}
-                        className="text-xs text-gray-400 hover:text-red-500"
-                      >
-                        ✕
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => dispatch({ type: 'DELETE_RECURRING', id: item.id })}
+                      className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all"
+                    >
+                      ✕
+                    </button>
                   </td>
                 </tr>
               );
             })}
+            {state.recurring.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">No recurring items yet</td>
+              </tr>
+            )}
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-gray-200 bg-gray-50">
-              <td className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Total monthly</td>
-              <td />
+              <td colSpan={3} className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Total monthly</td>
               <td className="px-4 py-3 text-right font-bold text-gray-900">${totalMonthly.toFixed(2)}</td>
-              <td colSpan={4} />
+              <td colSpan={3} />
             </tr>
           </tfoot>
         </table>

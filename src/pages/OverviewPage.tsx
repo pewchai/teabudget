@@ -14,7 +14,7 @@ export default function OverviewPage() {
   const monthlyTotals = useMemo(() =>
     MONTH_NAMES.map((name, i) => {
       const month = i + 1;
-      const txs = getMonthTransactions(state.transactions, YEAR, month);
+      const txs = getMonthTransactions(state.transactions, state.recurring, YEAR, month);
       const monthKey = `${YEAR}-${String(month).padStart(2, '0')}`;
       const budgets = state.budgets[monthKey] ?? {};
       const actual = txs.reduce((s, t) => s + t.amount, 0);
@@ -25,7 +25,7 @@ export default function OverviewPage() {
   );
 
   const currentMonth = new Date().getMonth() + 1;
-  const currentTxs = getMonthTransactions(state.transactions, YEAR, currentMonth);
+  const currentTxs = getMonthTransactions(state.transactions, state.recurring, YEAR, currentMonth);
   const currentKey = `${YEAR}-${String(currentMonth).padStart(2, '0')}`;
   const currentBudgets = state.budgets[currentKey] ?? {};
   const categoryActuals = sumByCategory(currentTxs);
@@ -85,7 +85,7 @@ export default function OverviewPage() {
                 </div>
                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all ${over ? 'bg-red-400' : 'bg-blue-500'}`}
+                    className="h-full rounded-full transition-all"
                     style={{ width: `${pct}%`, backgroundColor: CATEGORY_COLORS[cat as Category] }}
                   />
                 </div>
