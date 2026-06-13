@@ -270,7 +270,7 @@ export default function RecurringPage() {
               <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">≈ /month</th>
               <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Frequency</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Start / Next</th>
-              <th className="w-16 px-2" />
+              <th className="w-24 px-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -296,7 +296,7 @@ export default function RecurringPage() {
                 return (
                   <tr key={item.id} className="bg-blue-50" onKeyDown={handleEditKey}>
                     <td className="px-2 py-1">
-                      <input type="text" className={EDIT_CELL} autoFocus value={editForm.description}
+                      <input type="text" className={EDIT_CELL} value={editForm.description}
                         onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
                     </td>
                     <td className="px-2 py-1">
@@ -332,8 +332,8 @@ export default function RecurringPage() {
                         onChange={e => setEditForm(f => ({ ...f, startDate: e.target.value }))} />
                     </td>
                     <td className="px-2 py-1 text-right whitespace-nowrap">
-                      <button onClick={saveEdit} className="text-blue-600 text-xs font-medium hover:underline mr-1">✓</button>
-                      <button onClick={() => setEditingId(null)} className="text-gray-400 text-xs hover:text-red-500">✕</button>
+                      <button onClick={saveEdit} className="text-blue-600 text-sm font-semibold px-2.5 py-1 rounded hover:bg-blue-100 transition-colors">✓</button>
+                      <button onClick={() => setEditingId(null)} className="text-gray-400 text-sm px-2.5 py-1 rounded hover:text-red-500 hover:bg-red-50 transition-colors ml-1">✕</button>
                     </td>
                   </tr>
                 );
