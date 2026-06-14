@@ -14,7 +14,7 @@ const FIELD = 'mt-1 block w-full border border-gray-200 rounded-lg px-3 py-2 tex
 const EDIT_CELL = 'w-full bg-blue-50 border-b border-blue-300 px-1 py-0.5 text-sm focus:outline-none focus:bg-blue-100';
 
 export default function TransactionsPage() {
-  const { state, dispatch } = useBudget();
+  const { state, dispatch, selectedYear, setSelectedYear } = useBudget();
   const catNames = useMemo(() => state.categories.map(c => c.name), [state.categories]);
   const colorMap = useMemo(() => Object.fromEntries(state.categories.map(c => [c.name, c.color])), [state.categories]);
 
@@ -40,14 +40,16 @@ export default function TransactionsPage() {
   const [editForm, setEditForm] = useState({ date: '', amount: '', category: '', description: '' });
 
   const filtered = useMemo(() => {
-    let txs = [...state.transactions].sort((a, b) => b.date.localeCompare(a.date));
+    let txs = state.transactions
+      .filter(t => t.date.startsWith(String(selectedYear)))
+      .sort((a, b) => b.date.localeCompare(a.date));
     if (catFilter) txs = txs.filter(t => t.category === catFilter);
     if (filter) txs = txs.filter(t =>
       t.description.toLowerCase().includes(filter.toLowerCase()) ||
       t.category.toLowerCase().includes(filter.toLowerCase())
     );
     return txs;
-  }, [state.transactions, filter, catFilter]);
+  }, [state.transactions, filter, catFilter, selectedYear]);
 
   const editIdx = useMemo(() => editingId ? filtered.findIndex(t => t.id === editingId) : -1, [editingId, filtered]);
 
@@ -86,7 +88,7 @@ export default function TransactionsPage() {
     <div className="p-4 md:p-6 space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Transactions</h2>
-        <p className="text-gray-500 text-sm mt-1">{state.transactions.length} entries</p>
+        <p className="text-gray-500 text-sm mt-1">{filtered.length} entries in {selectedYear}</p>
       </div>
 
       {/* Add form — always visible */}
@@ -114,7 +116,7 @@ export default function TransactionsPage() {
           </label>
           <label className="block">
             <span className="text-xs font-medium text-gray-500 uppercase">Description</span>
-            <input type="text" required placeholder="e.g. Chipotle" value={newForm.description}
+            <input type="text" required placeholder="Description" value={newForm.description}
               onChange={e => setNewForm(f => ({ ...f, description: e.target.value }))}
               className={FIELD} />
           </label>
@@ -128,7 +130,7 @@ export default function TransactionsPage() {
       </form>
 
       {/* Filters */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 items-center">
         <input type="text" placeholder="Search…" value={filter}
           onChange={e => setFilter(e.target.value)}
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -136,6 +138,12 @@ export default function TransactionsPage() {
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="">All categories</option>
           {catNames.map(c => <option key={c}>{c}</option>)}
+        </select>
+        {/* Inconspicuous year selector */}
+        <select value={selectedYear} onChange={e => setSelectedYear(parseInt(e.target.value, 10))}
+          className="text-sm text-gray-400 bg-transparent px-1 py-2 focus:outline-none cursor-pointer hover:text-gray-600"
+          title="Year">
+          {state.years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
       </div>
 

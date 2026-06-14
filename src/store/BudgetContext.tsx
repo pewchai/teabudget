@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, useState, type ReactNode } from 'react';
 import {
   type Transaction, type RecurringItem, type BudgetsByMonth,
   type CategoryConfig, type MonthlyBudgets, DEFAULT_CATEGORIES,
@@ -7,13 +7,14 @@ import seedTransactions from '../data/transactions.json';
 import seedRecurring from '../data/recurring.json';
 import seedBudgets from '../data/budgets.json';
 
-const DATA_VERSION = '3';
+const DATA_VERSION = '4';
 
 interface State {
   transactions: Transaction[];
   recurring: RecurringItem[];
   budgets: BudgetsByMonth;
   categories: CategoryConfig[];
+  years: number[];
 }
 
 type Action =
@@ -26,7 +27,8 @@ type Action =
   | { type: 'SET_BUDGET'; monthKey: string; category: string; amount: number }
   | { type: 'ADD_CATEGORY'; cat: CategoryConfig }
   | { type: 'UPDATE_CATEGORY'; id: string; name: string; color: string; oldName: string }
-  | { type: 'DELETE_CATEGORY'; id: string };
+  | { type: 'DELETE_CATEGORY'; id: string }
+  | { type: 'ADD_YEAR'; year: number };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -60,6 +62,10 @@ function reducer(state: State, action: Action): State {
       };
     case 'DELETE_CATEGORY':
       return { ...state, categories: state.categories.filter(c => c.id !== action.id) };
+    case 'ADD_YEAR':
+      return state.years.includes(action.year)
+        ? state
+        : { ...state, years: [...state.years, action.year].sort((a, b) => a - b) };
     default:
       return state;
   }
@@ -84,7 +90,7 @@ function buildSeedState(): State {
     budgets[`2026-${String(monthNum).padStart(2, '0')}`] = cats;
   }
 
-  return { transactions, recurring, budgets, categories: [...DEFAULT_CATEGORIES] };
+  return { transactions, recurring, budgets, categories: [...DEFAULT_CATEGORIES], years: [2026] };
 }
 
 function loadInitialState(): State {
@@ -96,16 +102,39 @@ function loadInitialState(): State {
   return buildSeedState();
 }
 
-interface ContextValue { state: State; dispatch: React.Dispatch<Action> }
+interface ContextValue {
+  state: State;
+  dispatch: React.Dispatch<Action>;
+  selectedYear: number;
+  setSelectedYear: (year: number) => void;
+  addYear: () => number;
+}
 const BudgetContext = createContext<ContextValue | null>(null);
 
 export function BudgetProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, null, loadInitialState);
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    const cy = new Date().getFullYear();
+    return state.years.includes(cy) ? cy : (state.years[state.years.length - 1] ?? cy);
+  });
+
   useEffect(() => {
     localStorage.setItem('krindbudget', JSON.stringify(state));
     localStorage.setItem('krindbudget_version', DATA_VERSION);
   }, [state]);
-  return <BudgetContext.Provider value={{ state, dispatch }}>{children}</BudgetContext.Provider>;
+
+  function addYear(): number {
+    const next = Math.max(...state.years) + 1;
+    dispatch({ type: 'ADD_YEAR', year: next });
+    setSelectedYear(next);
+    return next;
+  }
+
+  return (
+    <BudgetContext.Provider value={{ state, dispatch, selectedYear, setSelectedYear, addYear }}>
+      {children}
+    </BudgetContext.Provider>
+  );
 }
 
 export function useBudget() {

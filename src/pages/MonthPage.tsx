@@ -3,36 +3,35 @@ import { useParams } from 'react-router-dom';
 import { useBudget, getMonthTransactions, sumByCategory } from '../store/BudgetContext';
 import { MONTH_NAMES, type Transaction } from '../types';
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
+  LineChart, Line, CartesianGrid, ComposedChart, Bar,
 } from 'recharts';
 
-const YEAR = 2026;
 const EDIT_CELL = 'w-full bg-blue-50 border-b border-blue-300 px-1 py-0.5 text-sm focus:outline-none focus:bg-blue-100';
 
-type ChartView = 'budget-actual' | 'spending-pie' | 'daily-spending' | 'category-totals';
+type ChartView = 'daily-pace' | 'breakdown' | 'category-trend';
 
 const CHART_OPTIONS: { value: ChartView; label: string }[] = [
-  { value: 'budget-actual', label: 'Budget vs Actual' },
-  { value: 'spending-pie', label: 'Spending Breakdown' },
-  { value: 'daily-spending', label: 'Daily Spending' },
-  { value: 'category-totals', label: 'Category Totals' },
+  { value: 'daily-pace', label: 'Daily Spending & Pace' },
+  { value: 'breakdown', label: 'Breakdown Wheel' },
+  { value: 'category-trend', label: 'Category Trend' },
 ];
 
 export default function MonthPage() {
   const { month: monthStr } = useParams<{ month: string }>();
   const month = parseInt(monthStr ?? '1', 10);
+  const { state, dispatch, selectedYear } = useBudget();
+  const YEAR = selectedYear;
   const monthKey = `${YEAR}-${String(month).padStart(2, '0')}`;
   const monthName = MONTH_NAMES[month - 1];
 
-  const { state, dispatch } = useBudget();
   const colorMap = useMemo(() => Object.fromEntries(state.categories.map(c => [c.name, c.color])), [state.categories]);
   const catNames = useMemo(() => state.categories.map(c => c.name), [state.categories]);
   const monthBudgets = (state.budgets[monthKey] ?? {}) as Record<string, number>;
 
   const txs = useMemo(
     () => getMonthTransactions(state.transactions, state.recurring, YEAR, month),
-    [state.transactions, state.recurring, month]
+    [state.transactions, state.recurring, YEAR, month]
   );
   const actuals = useMemo(() => sumByCategory(txs), [txs]);
 
@@ -47,29 +46,40 @@ export default function MonthPage() {
   const totalActual = rows.reduce((s, r) => s + r.actual, 0);
   const totalDiff = totalBudget - totalActual;
 
-  const barData = rows.filter(r => r.budget > 0 || r.actual > 0)
-    .map(r => ({ name: r.cat, Budget: r.budget, Actual: r.actual }));
   const pieData = rows.filter(r => r.actual > 0).map(r => ({ name: r.cat, value: r.actual }));
+  const activeCats = useMemo(() => catNames.filter(c => (actuals[c] ?? 0) > 0), [catNames, actuals]);
 
+  // Daily spending + running cumulative + even budget pace
   const dailyData = useMemo(() => {
     const dim = new Date(YEAR, month, 0).getDate();
+    let cum = 0;
     return Array.from({ length: dim }, (_, i) => {
       const d = i + 1;
       const dateStr = `${YEAR}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const total = txs.filter(t => t.date === dateStr).reduce((s, t) => s + t.amount, 0);
-      return { day: d, amount: Math.round(total * 100) / 100 };
+      const amount = Math.round(txs.filter(t => t.date === dateStr).reduce((s, t) => s + t.amount, 0) * 100) / 100;
+      cum = Math.round((cum + amount) * 100) / 100;
+      const pace = Math.round((totalBudget * d / dim) * 100) / 100;
+      return { day: d, amount, cumulative: cum, pace };
     });
-  }, [txs, month]);
+  }, [txs, YEAR, month, totalBudget]);
 
-  const categoryTotals = useMemo(() =>
-    catNames
-      .map(cat => ({ name: cat, value: Math.round((actuals[cat] ?? 0) * 100) / 100 }))
-      .filter(d => d.value > 0)
-      .sort((a, b) => b.value - a.value),
-    [actuals, catNames]
-  );
+  // Category cumulative spend across days of the month
+  const categoryTrend = useMemo(() => {
+    const dim = new Date(YEAR, month, 0).getDate();
+    const running: Record<string, number> = {};
+    return Array.from({ length: dim }, (_, i) => {
+      const d = i + 1;
+      const dateStr = `${YEAR}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      for (const t of txs.filter(t => t.date === dateStr)) {
+        running[t.category] = (running[t.category] ?? 0) + t.amount;
+      }
+      const entry: Record<string, number> = { day: d };
+      for (const c of activeCats) entry[c] = Math.round((running[c] ?? 0) * 100) / 100;
+      return entry;
+    });
+  }, [txs, YEAR, month, activeCats]);
 
-  const [chartView, setChartView] = useState<ChartView>('budget-actual');
+  const [chartView, setChartView] = useState<ChartView>('daily-pace');
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editVal, setEditVal] = useState('');
 
@@ -85,7 +95,6 @@ export default function MonthPage() {
   const [txEditForm, setTxEditForm] = useState({ date: '', amount: '', category: '', description: '' });
 
   const isRecurring = (id: string) => id.startsWith('rec-');
-
   const editableTxs = useMemo(() => txs.filter(t => !isRecurring(t.id)), [txs]);
   const txEditIdx = useMemo(
     () => txEditingId ? editableTxs.findIndex(t => t.id === txEditingId) : -1,
@@ -127,16 +136,14 @@ export default function MonthPage() {
   return (
     <div className="p-4 md:p-6 space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">{monthName} 2026</h2>
+        <h2 className="text-2xl font-bold text-gray-900">{monthName} {YEAR}</h2>
         <p className="text-gray-500 text-sm mt-1">{txs.length} transactions · ${totalActual.toFixed(2)} spent</p>
       </div>
 
-      {/* Chart panel with dropdown */}
+      {/* Chart panel */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-700">
-            {CHART_OPTIONS.find(o => o.value === chartView)?.label}
-          </h3>
+          <h3 className="font-semibold text-gray-700">{CHART_OPTIONS.find(o => o.value === chartView)?.label}</h3>
           <select
             value={chartView}
             onChange={e => setChartView(e.target.value as ChartView)}
@@ -146,20 +153,22 @@ export default function MonthPage() {
           </select>
         </div>
 
-        <div className="h-52 md:h-64">
+        <div className="h-56 md:h-72">
           <ResponsiveContainer width="100%" height="100%">
-            {chartView === 'budget-actual' ? (
-              <BarChart data={barData} layout="vertical" barCategoryGap="25%">
-                <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => `$${v}`} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={72} />
+            {chartView === 'daily-pace' ? (
+              <ComposedChart data={dailyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                <XAxis dataKey="day" tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="left" tick={{ fontSize: 11 }} tickFormatter={v => `$${v}`} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={v => `$${v}`} />
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                <Tooltip formatter={(v: any) => `$${Number(v).toFixed(2)}`} />
-                <Bar dataKey="Budget" fill="#e5e7eb" radius={[0, 4, 4, 0]} />
-                <Bar dataKey="Actual" radius={[0, 4, 4, 0]}>
-                  {barData.map(e => <Cell key={e.name} fill={colorMap[e.name] ?? '#9ca3af'} />)}
-                </Bar>
-              </BarChart>
-            ) : chartView === 'spending-pie' ? (
+                <Tooltip formatter={(v: any) => `$${Number(v).toFixed(2)}`} labelFormatter={d => `Day ${d}`} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar yAxisId="left" dataKey="amount" name="Daily" fill="#dbeafe" radius={[3, 3, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="cumulative" name="Cumulative" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                <Line yAxisId="right" type="monotone" dataKey="pace" name="Budget pace" stroke="#9ca3af" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+              </ComposedChart>
+            ) : chartView === 'breakdown' ? (
               pieData.length > 0 ? (
                 <PieChart>
                   <Pie data={pieData} dataKey="value" nameKey="name" cx="40%" cy="50%" outerRadius={90} innerRadius={50}>
@@ -170,29 +179,20 @@ export default function MonthPage() {
                   <Legend layout="vertical" align="right" verticalAlign="middle" iconSize={10} wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
               ) : (
-                <BarChart data={[]}>
-                  <text x="50%" y="50%" textAnchor="middle" fill="#9ca3af" fontSize={13}>No transactions yet</text>
-                </BarChart>
+                <LineChart data={[]}><XAxis /><YAxis /></LineChart>
               )
-            ) : chartView === 'daily-spending' ? (
-              <LineChart data={dailyData}>
+            ) : (
+              <LineChart data={categoryTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis dataKey="day" tick={{ fontSize: 11 }} tickFormatter={d => String(d)} />
+                <XAxis dataKey="day" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `$${v}`} />
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 <Tooltip formatter={(v: any) => `$${Number(v).toFixed(2)}`} labelFormatter={d => `Day ${d}`} />
-                <Line type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                {activeCats.map(cat => (
+                  <Line key={cat} type="monotone" dataKey={cat} stroke={colorMap[cat] ?? '#9ca3af'} strokeWidth={2} dot={false} />
+                ))}
               </LineChart>
-            ) : (
-              <BarChart data={categoryTotals} layout="vertical" barCategoryGap="25%">
-                <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => `$${v}`} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={72} />
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                <Tooltip formatter={(v: any) => `$${Number(v).toFixed(2)}`} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                  {categoryTotals.map(e => <Cell key={e.name} fill={colorMap[e.name] ?? '#9ca3af'} />)}
-                </Bar>
-              </BarChart>
             )}
           </ResponsiveContainer>
         </div>
@@ -230,7 +230,7 @@ export default function MonthPage() {
                   )}
                 </td>
                 <td className="px-5 py-3 text-right font-semibold text-gray-900">${actual.toFixed(2)}</td>
-                <td className={`px-5 py-3 text-right font-semibold ${diff < 0 ? 'text-red-500' : budget === 0 && actual === 0 ? 'text-gray-300' : 'text-gray-700'}`}>
+                <td className={`px-5 py-3 text-right font-semibold ${diff < 0 ? 'text-red-500' : budget === 0 && actual === 0 ? 'text-gray-300' : 'text-emerald-600'}`}>
                   {budget === 0 && actual === 0 ? '—' : `${diff < 0 ? '-' : ''}$${Math.abs(diff).toFixed(2)}`}
                 </td>
               </tr>
@@ -241,7 +241,7 @@ export default function MonthPage() {
               <td className="px-5 py-3 text-gray-800">Total</td>
               <td className="px-5 py-3 text-right text-gray-800">${totalBudget.toFixed(2)}</td>
               <td className="px-5 py-3 text-right text-gray-900">${totalActual.toFixed(2)}</td>
-              <td className={`px-5 py-3 text-right ${totalDiff < 0 ? 'text-red-500' : 'text-gray-700'}`}>
+              <td className={`px-5 py-3 text-right ${totalDiff < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
                 {totalDiff < 0 ? '-' : ''}${Math.abs(totalDiff).toFixed(2)}
               </td>
             </tr>

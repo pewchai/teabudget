@@ -12,3 +12,13 @@
     @apply min-h-screen;
   }
 }
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+@keyframes dropdown {
+  from { opacity: 0; transform: scaleY(0.85) translateY(-4px); }
+  to   { opacity: 1; transform: scaleY(1) translateY(0); }
+}
