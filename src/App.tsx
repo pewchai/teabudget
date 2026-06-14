@@ -14,7 +14,7 @@ export default function App() {
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <div className="flex flex-col min-h-screen bg-gray-50">
           <TopBar />
-          <main className="flex-1 overflow-y-auto pb-28">
+          <main className="flex-1 overflow-y-auto pb-6">
             <div className="mx-auto w-full max-w-3xl">
               <Routes>
                 <Route path="/" element={<TransactionsPage />} />

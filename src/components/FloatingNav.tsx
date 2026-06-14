@@ -2,11 +2,22 @@ import { NavLink } from 'react-router-dom';
 
 const ITEMS = [
   {
+    to: '/year',
+    end: false,
+    label: 'Overview',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round"
+          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    ),
+  },
+  {
     to: '/',
     end: true,
     label: 'Transactions',
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round"
           d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2
              M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2
@@ -19,7 +30,7 @@ const ITEMS = [
     end: false,
     label: 'Recurring',
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round"
           d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9
              m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -31,7 +42,7 @@ const ITEMS = [
     end: false,
     label: 'Settings',
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round"
           d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066
              c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572
@@ -49,16 +60,16 @@ const ITEMS = [
 
 export default function FloatingNav() {
   return (
-    <div className="fixed bottom-8 right-4 z-50 flex flex-col gap-3">
+    <div className="fixed top-12 right-3 z-30 flex flex-row gap-1.5">
       {ITEMS.map(item => (
         <NavLink key={item.to} to={item.to} end={item.end} title={item.label}>
           {({ isActive }) => (
             <div className={`
-              w-11 h-11 rounded-2xl flex items-center justify-center
-              shadow-lg transition-all duration-150
+              w-9 h-9 rounded-xl flex items-center justify-center
+              shadow-md transition-all duration-150
               ${isActive
-                ? 'bg-blue-600 text-white shadow-blue-300'
-                : 'bg-white text-gray-500 hover:text-blue-600 hover:shadow-xl'
+                ? 'bg-blue-600 text-white shadow-blue-200'
+                : 'bg-white text-gray-400 hover:text-blue-600 hover:shadow-lg'
               }
             `}>
               {item.icon}

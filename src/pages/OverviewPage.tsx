@@ -162,9 +162,10 @@ export default function OverviewPage() {
         >
           Add {Math.max(...state.years) + 1}
         </button>
-        {state.years.length > 1 && monthlyData.every(m => m.actual === 0) && (
+        {state.years.length > 1 && (
           <button
             onClick={() => {
+              if (!window.confirm(`Delete ${YEAR}? All transactions and budget data for this year will be permanently removed.`)) return;
               dispatch({ type: 'DELETE_YEAR', year: YEAR });
               const remaining = state.years.filter(y => y !== YEAR);
               const fallback = remaining[remaining.length - 1] ?? remaining[0];
