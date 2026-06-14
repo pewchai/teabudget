@@ -51,15 +51,19 @@ const ITEMS = [
 export default function FloatingNav() {
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-sm border-t border-gray-200">
-      <div className="flex max-w-3xl mx-auto">
+      <div className="flex max-w-3xl mx-auto px-1 pt-1 pb-2">
         {ITEMS.map(item => (
           <NavLink key={item.to} to={item.to} end={item.end} className="flex-1">
             {({ isActive }) => (
-              <div className={`flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
-                isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
-              }`}>
-                {item.icon}
-                <span className="text-[10px] font-medium tracking-wide">{item.label}</span>
+              <div className="flex flex-col items-center gap-0.5">
+                <div className={`rounded-full px-4 py-1 transition-all ${
+                  isActive ? 'bg-blue-100 text-blue-600' : 'text-gray-400'
+                }`}>
+                  {item.icon}
+                </div>
+                <span className={`text-[10px] font-medium ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
+                  {item.label}
+                </span>
               </div>
             )}
           </NavLink>

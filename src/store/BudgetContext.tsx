@@ -179,7 +179,8 @@ export function recurringOccurrencesForMonth(item: RecurringItem, year: number, 
     const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     results.push({ id: `rec-${item.id}-${year}-${month}`, date: dateStr, amount: item.amount, category: item.category, description: item.description });
   }
-  return results;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  return results.filter(t => t.date <= todayStr);
 }
 
 export function getMonthTransactions(

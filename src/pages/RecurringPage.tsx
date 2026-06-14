@@ -3,37 +3,17 @@ import { useBudget, nextOccurrenceDate, frequencyLabel } from '../store/BudgetCo
 import { type RecurringItem, type FrequencyType } from '../types';
 import { nanoid } from 'nanoid';
 
-const FIELD = 'mt-1 block w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+const FIELD = 'mt-1 block w-full h-10 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white';
 const EDIT_CELL = 'w-full bg-blue-50 border-b border-blue-300 px-1 py-0.5 text-sm focus:outline-none focus:bg-blue-100';
 
-function ordinal(n: number) {
-  const s = ['th', 'st', 'nd', 'rd'];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
-}
-
-function dayFromDate(dateStr: string): number {
-  return parseInt(dateStr.split('-')[2] ?? '1', 10);
-}
-
-const SAME_DATE_PERIODS = [
-  { label: 'Monthly', months: 1 },
-  { label: 'Every 2 months', months: 2 },
-  { label: 'Quarterly (every 3 months)', months: 3 },
-  { label: 'Every 6 months', months: 6 },
-  { label: 'Yearly', months: 12 },
-  { label: 'Every 2 years', months: 24 },
-];
 
 const makeEmpty = (startDate: string) => ({
   startDate,
   amount: '',
   category: '',
   description: '',
-  sameDate: false,
-  sameDateMonths: 1,
-  frequencyValue: '30',
-  frequencyType: 'days' as FrequencyType,
+  frequencyValue: '1',
+  frequencyType: 'months' as FrequencyType,
 });
 
 type EditForm = {
@@ -86,8 +66,8 @@ export default function RecurringPage() {
       amount: parseFloat(form.amount),
       category: form.category,
       description: form.description,
-      frequencyType: form.sameDate ? 'months' : form.frequencyType,
-      frequencyValue: form.sameDate ? form.sameDateMonths : parseInt(form.frequencyValue, 10),
+      frequencyType: form.frequencyType,
+      frequencyValue: parseInt(form.frequencyValue, 10) || 1,
     };
     dispatch({ type: 'ADD_RECURRING', item });
     setForm(makeEmpty(defaultStartDate));
@@ -148,9 +128,6 @@ export default function RecurringPage() {
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const day = dayFromDate(form.startDate);
-  const dayLabel = ordinal(day);
-  const shortMonthNote = day >= 29 ? ' (last day for shorter months)' : '';
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -198,70 +175,25 @@ export default function RecurringPage() {
           </div>
 
           {/* Frequency */}
-          <div className="space-y-3 pt-1 border-t border-gray-100">
-            <span className="text-xs font-medium text-gray-500 uppercase block">Billing Frequency</span>
-
-            <div className="flex items-center gap-3">
-              <div className="flex gap-2 flex-1">
-                <input
-                  type="number" min="1" required={!form.sameDate}
-                  placeholder="30"
-                  value={form.frequencyValue}
-                  onChange={e => setForm(f => ({ ...f, frequencyValue: e.target.value }))}
-                  disabled={form.sameDate}
-                  className={`w-20 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    form.sameDate ? 'bg-gray-50 text-gray-400 border-gray-200 opacity-60 cursor-not-allowed' : 'border-gray-200'
-                  }`}
-                />
-                <select
-                  value={form.frequencyType}
-                  onChange={e => setForm(f => ({ ...f, frequencyType: e.target.value as FrequencyType }))}
-                  disabled={form.sameDate}
-                  className={`flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    form.sameDate ? 'bg-gray-50 text-gray-400 border-gray-200 opacity-60 cursor-not-allowed' : 'border-gray-200'
-                  }`}
-                >
-                  <option value="days">day(s) — exact interval</option>
-                  <option value="months">month(s) — same calendar date</option>
-                  <option value="years">year(s) — same calendar date</option>
-                </select>
-              </div>
-            </div>
-
-            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+          <div className="pt-1 border-t border-gray-100">
+            <span className="text-xs font-medium text-gray-500 uppercase block mb-2">Repeats every</span>
+            <div className="flex gap-2">
               <input
-                type="checkbox"
-                checked={form.sameDate}
-                onChange={e => setForm(f => ({ ...f, sameDate: e.target.checked }))}
-                className="mt-0.5 w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                type="number" min="1" required placeholder="1"
+                value={form.frequencyValue}
+                onChange={e => setForm(f => ({ ...f, frequencyValue: e.target.value }))}
+                className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <span className="text-sm text-gray-700">
-                Bill on the same date each period
-                <span className="text-gray-400 text-xs block mt-0.5">
-                  {form.sameDate
-                    ? `Bills on the ${dayLabel} of each period${shortMonthNote}`
-                    : 'If months/years are shorter (Feb, etc.), use the last day of the month'}
-                </span>
-              </span>
-            </label>
-
-            {form.sameDate && (
-              <div className="ml-6">
-                <span className="text-xs font-medium text-gray-500 uppercase block mb-1">Repeat every</span>
-                <select
-                  value={form.sameDateMonths}
-                  onChange={e => setForm(f => ({ ...f, sameDateMonths: parseInt(e.target.value, 10) }))}
-                  className={FIELD}
-                >
-                  {SAME_DATE_PERIODS.map(p => (
-                    <option key={p.months} value={p.months}>{p.label}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-400 mt-1.5">
-                  Bills on the {dayLabel} of each period{shortMonthNote}.
-                </p>
-              </div>
-            )}
+              <select
+                value={form.frequencyType}
+                onChange={e => setForm(f => ({ ...f, frequencyType: e.target.value as FrequencyType }))}
+                className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="days">days</option>
+                <option value="months">months</option>
+                <option value="years">years</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex gap-3 pt-1">
@@ -275,13 +207,13 @@ export default function RecurringPage() {
         <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Description</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Item</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Category</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Amount</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">≈ /month</th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Frequency</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Start / Next</th>
-              <th className="w-24 px-2" />
+              <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">/mo</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Repeats</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Next</th>
+              <th className="w-10 px-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -360,8 +292,8 @@ export default function RecurringPage() {
                   <td className="px-4 py-3 text-right font-semibold text-gray-900">${item.amount.toFixed(2)}</td>
                   <td className="px-4 py-3 text-right text-gray-500 text-xs">${monthlyEq.toFixed(2)}</td>
                   <td className="px-4 py-3 text-center text-gray-600 text-xs">{frequencyLabel(item)}</td>
-                  <td className={`px-4 py-3 font-mono text-xs ${due ? 'text-amber-600 font-semibold' : 'text-gray-500'}`}>
-                    {next}{due && ' ⚠'}
+                  <td className={`px-4 py-3 font-mono text-xs ${due ? 'text-amber-500 font-semibold' : 'text-gray-500'}`}>
+                    {next}
                   </td>
                   <td className="px-2 py-3">
                     <button onClick={e => { e.stopPropagation(); dispatch({ type: 'DELETE_RECURRING', id: item.id }); }}

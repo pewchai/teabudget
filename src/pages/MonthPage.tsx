@@ -199,50 +199,50 @@ export default function MonthPage() {
       </div>
 
       {/* Budget table */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden overflow-x-auto">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Category</th>
-              <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Budget</th>
-              <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Actual</th>
-              <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Remaining</th>
+              <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase">Category</th>
+              <th className="text-right px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase">Budget</th>
+              <th className="text-right px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase">Spent</th>
+              <th className="text-right px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase">Left</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.map(({ cat, budget, actual, diff }) => (
               <tr key={cat} className="hover:bg-gray-50">
-                <td className="px-5 py-3 font-medium text-gray-800">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full mr-2" style={{ backgroundColor: colorMap[cat] ?? '#9ca3af' }} />
+                <td className="px-3 py-2.5 font-medium text-gray-800 flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: colorMap[cat] ?? '#9ca3af' }} />
                   {cat}
                 </td>
-                <td className="px-5 py-3 text-right">
+                <td className="px-3 py-2.5 text-right">
                   {editingCat === cat ? (
                     <input type="number" step="0.01" value={editVal}
                       onChange={e => setEditVal(e.target.value)}
                       onBlur={() => commitBudgetEdit(cat)}
                       onKeyDown={e => e.key === 'Enter' && commitBudgetEdit(cat)}
-                      autoFocus className="w-24 text-right border border-blue-400 rounded px-2 py-1 text-sm focus:outline-none" />
+                      autoFocus className="w-20 text-right border border-blue-400 rounded px-1.5 py-0.5 text-sm focus:outline-none" />
                   ) : (
-                    <button onClick={() => startBudgetEdit(cat, budget)} className="text-gray-700 hover:text-blue-600 font-medium" title="Click to edit">
-                      ${budget.toFixed(2)}
+                    <button onClick={() => startBudgetEdit(cat, budget)} className="text-gray-600 hover:text-blue-600 tabular-nums" title="Tap to edit">
+                      ${budget.toFixed(0)}
                     </button>
                   )}
                 </td>
-                <td className="px-5 py-3 text-right font-semibold text-gray-900">${actual.toFixed(2)}</td>
-                <td className={`px-5 py-3 text-right font-semibold ${diff < 0 ? 'text-red-500' : budget === 0 && actual === 0 ? 'text-gray-300' : 'text-emerald-600'}`}>
-                  {budget === 0 && actual === 0 ? '—' : `${diff < 0 ? '-' : ''}$${Math.abs(diff).toFixed(2)}`}
+                <td className="px-3 py-2.5 text-right font-medium text-gray-900 tabular-nums">${actual.toFixed(2)}</td>
+                <td className={`px-3 py-2.5 text-right font-semibold tabular-nums ${diff < 0 ? 'text-red-500' : budget === 0 && actual === 0 ? 'text-gray-300' : 'text-emerald-600'}`}>
+                  {budget === 0 && actual === 0 ? '—' : `${diff < 0 ? '-' : ''}$${Math.abs(diff).toFixed(0)}`}
                 </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
-              <td className="px-5 py-3 text-gray-800">Total</td>
-              <td className="px-5 py-3 text-right text-gray-800">${totalBudget.toFixed(2)}</td>
-              <td className="px-5 py-3 text-right text-gray-900">${totalActual.toFixed(2)}</td>
-              <td className={`px-5 py-3 text-right ${totalDiff < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-                {totalDiff < 0 ? '-' : ''}${Math.abs(totalDiff).toFixed(2)}
+            <tr className="border-t-2 border-gray-200 bg-gray-50 font-bold">
+              <td className="px-3 py-2.5 text-gray-800">Total</td>
+              <td className="px-3 py-2.5 text-right text-gray-700 tabular-nums">${totalBudget.toFixed(0)}</td>
+              <td className="px-3 py-2.5 text-right text-gray-900 tabular-nums">${totalActual.toFixed(2)}</td>
+              <td className={`px-3 py-2.5 text-right tabular-nums ${totalDiff < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                {totalDiff < 0 ? '-' : ''}${Math.abs(totalDiff).toFixed(0)}
               </td>
             </tr>
           </tfoot>
