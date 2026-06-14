@@ -14,7 +14,7 @@ const FIELD = 'mt-1 block w-full border border-gray-200 rounded-lg px-3 py-2 tex
 const EDIT_CELL = 'w-full bg-blue-50 border-b border-blue-300 px-1 py-0.5 text-sm focus:outline-none focus:bg-blue-100';
 
 export default function TransactionsPage() {
-  const { state, dispatch, selectedYear, setSelectedYear } = useBudget();
+  const { state, dispatch, selectedYear } = useBudget();
   const catNames = useMemo(() => state.categories.map(c => c.name), [state.categories]);
   const colorMap = useMemo(() => Object.fromEntries(state.categories.map(c => [c.name, c.color])), [state.categories]);
 
@@ -94,19 +94,19 @@ export default function TransactionsPage() {
       {/* Add form — always visible */}
       <form onSubmit={handleAdd} className="bg-white border border-gray-200 rounded-xl p-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="block">
+          <label className="block min-w-0">
             <span className="text-xs font-medium text-gray-500 uppercase">Date</span>
             <input type="date" required value={newForm.date}
               onChange={e => setNewForm(f => ({ ...f, date: e.target.value }))}
               className={FIELD} />
           </label>
-          <label className="block">
+          <label className="block min-w-0">
             <span className="text-xs font-medium text-gray-500 uppercase">Amount ($)</span>
             <input type="number" step="0.01" min="0" required placeholder="0.00" value={newForm.amount}
               onChange={e => setNewForm(f => ({ ...f, amount: e.target.value }))}
               className={FIELD} />
           </label>
-          <label className="block">
+          <label className="block min-w-0">
             <span className="text-xs font-medium text-gray-500 uppercase">Category</span>
             <select required value={newForm.category}
               onChange={e => setNewForm(f => ({ ...f, category: e.target.value }))}
@@ -114,7 +114,7 @@ export default function TransactionsPage() {
               {catNames.map(c => <option key={c}>{c}</option>)}
             </select>
           </label>
-          <label className="block">
+          <label className="block min-w-0">
             <span className="text-xs font-medium text-gray-500 uppercase">Description</span>
             <input type="text" required placeholder="Description" value={newForm.description}
               onChange={e => setNewForm(f => ({ ...f, description: e.target.value }))}
@@ -133,17 +133,11 @@ export default function TransactionsPage() {
       <div className="flex gap-3 items-center">
         <input type="text" placeholder="Search…" value={filter}
           onChange={e => setFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1 min-w-0 focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shrink-0">
           <option value="">All categories</option>
           {catNames.map(c => <option key={c}>{c}</option>)}
-        </select>
-        {/* Inconspicuous year selector */}
-        <select value={selectedYear} onChange={e => setSelectedYear(parseInt(e.target.value, 10))}
-          className="text-sm text-gray-400 bg-transparent px-1 py-2 focus:outline-none cursor-pointer hover:text-gray-600"
-          title="Year">
-          {state.years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
       </div>
 

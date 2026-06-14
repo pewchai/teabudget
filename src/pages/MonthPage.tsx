@@ -79,7 +79,7 @@ export default function MonthPage() {
     });
   }, [txs, YEAR, month, activeCats]);
 
-  const [chartView, setChartView] = useState<ChartView>('daily-pace');
+  const [chartView, setChartView] = useState<ChartView>('breakdown');
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editVal, setEditVal] = useState('');
 

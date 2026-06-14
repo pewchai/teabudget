@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useBudget, getMonthTransactions, sumByCategory } from '../store/BudgetContext';
 import { MONTH_NAMES } from '../types';
 import {
@@ -16,12 +17,13 @@ const CHART_OPTIONS: { value: ChartView; label: string }[] = [
 ];
 
 export default function OverviewPage() {
-  const { state, selectedYear, addYear } = useBudget();
+  const navigate = useNavigate();
+  const { state, dispatch, selectedYear, setSelectedYear, addYear } = useBudget();
   const YEAR = selectedYear;
   const colorMap = useMemo(() => Object.fromEntries(state.categories.map(c => [c.name, c.color])), [state.categories]);
   const catNames = useMemo(() => state.categories.map(c => c.name), [state.categories]);
 
-  const [chartView, setChartView] = useState<ChartView>('spending-trend');
+  const [chartView, setChartView] = useState<ChartView>('breakdown');
 
   // Monthly actual + budget, with running cumulative lines
   const monthlyData = useMemo(() => {
@@ -152,14 +154,28 @@ export default function OverviewPage() {
         ))}
       </div>
 
-      {/* Add year — inconspicuous, at the bottom */}
-      <div className="pt-4 text-center">
+      {/* Year management — inconspicuous */}
+      <div className="pt-4 flex justify-center gap-6">
         <button
           onClick={addYear}
           className="text-sm text-gray-400 hover:text-blue-600 transition-colors"
         >
-          Add year ({Math.max(...state.years) + 1})
+          Add {Math.max(...state.years) + 1}
         </button>
+        {state.years.length > 1 && monthlyData.every(m => m.actual === 0) && (
+          <button
+            onClick={() => {
+              dispatch({ type: 'DELETE_YEAR', year: YEAR });
+              const remaining = state.years.filter(y => y !== YEAR);
+              const fallback = remaining[remaining.length - 1] ?? remaining[0];
+              if (fallback !== undefined) setSelectedYear(fallback);
+              navigate('/year');
+            }}
+            className="text-sm text-gray-400 hover:text-red-500 transition-colors"
+          >
+            Delete {YEAR}
+          </button>
+        )}
       </div>
     </div>
   );

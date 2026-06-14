@@ -11,7 +11,7 @@ import SettingsPage from './pages/SettingsPage';
 export default function App() {
   return (
     <BudgetProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <div className="flex flex-col min-h-screen bg-gray-50">
           <TopBar />
           <main className="flex-1 overflow-y-auto pb-28">

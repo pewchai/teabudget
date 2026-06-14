@@ -28,7 +28,8 @@ type Action =
   | { type: 'ADD_CATEGORY'; cat: CategoryConfig }
   | { type: 'UPDATE_CATEGORY'; id: string; name: string; color: string; oldName: string }
   | { type: 'DELETE_CATEGORY'; id: string }
-  | { type: 'ADD_YEAR'; year: number };
+  | { type: 'ADD_YEAR'; year: number }
+  | { type: 'DELETE_YEAR'; year: number };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -66,6 +67,10 @@ function reducer(state: State, action: Action): State {
       return state.years.includes(action.year)
         ? state
         : { ...state, years: [...state.years, action.year].sort((a, b) => a - b) };
+    case 'DELETE_YEAR':
+      return state.years.length <= 1
+        ? state
+        : { ...state, years: state.years.filter(y => y !== action.year) };
     default:
       return state;
   }
