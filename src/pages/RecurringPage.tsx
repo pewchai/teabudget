@@ -25,8 +25,8 @@ const SAME_DATE_PERIODS = [
   { label: 'Every 2 years', months: 24 },
 ];
 
-const EMPTY = {
-  startDate: new Date().toISOString().slice(0, 10),
+const makeEmpty = (startDate: string) => ({
+  startDate,
   amount: '',
   category: '',
   description: '',
@@ -34,7 +34,7 @@ const EMPTY = {
   sameDateMonths: 1,
   frequencyValue: '30',
   frequencyType: 'days' as FrequencyType,
-};
+});
 
 type EditForm = {
   startDate: string;
@@ -46,9 +46,14 @@ type EditForm = {
 };
 
 export default function RecurringPage() {
-  const { state, dispatch } = useBudget();
+  const { state, dispatch, selectedYear } = useBudget();
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(EMPTY);
+
+  const defaultStartDate = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return today.startsWith(String(selectedYear)) ? today : `${selectedYear}-01-01`;
+  }, [selectedYear]);
+  const [form, setForm] = useState(() => makeEmpty(defaultStartDate));
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditForm>({
@@ -59,13 +64,19 @@ export default function RecurringPage() {
   const catNames = useMemo(() => state.categories.map(c => c.name), [state.categories]);
   const colorMap = useMemo(() => Object.fromEntries(state.categories.map(c => [c.name, c.color])), [state.categories]);
 
-  const totalMonthly = useMemo(() => state.recurring.reduce((s, r) => {
+  // Items active in the selected year (started in or before that year)
+  const yearRecurring = useMemo(
+    () => state.recurring.filter(r => r.startDate.slice(0, 4) <= String(selectedYear)),
+    [state.recurring, selectedYear]
+  );
+
+  const totalMonthly = useMemo(() => yearRecurring.reduce((s, r) => {
     const monthsPerOccurrence = r.frequencyType === 'days'
       ? r.frequencyValue / 30.44
       : r.frequencyType === 'months' ? r.frequencyValue
       : r.frequencyValue * 12;
     return s + r.amount / monthsPerOccurrence;
-  }, 0), [state.recurring]);
+  }, 0), [yearRecurring]);
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -79,7 +90,7 @@ export default function RecurringPage() {
       frequencyValue: form.sameDate ? form.sameDateMonths : parseInt(form.frequencyValue, 10),
     };
     dispatch({ type: 'ADD_RECURRING', item });
-    setForm(EMPTY);
+    setForm(makeEmpty(defaultStartDate));
     setShowForm(false);
   }
 
@@ -117,15 +128,15 @@ export default function RecurringPage() {
   }, [editingId, editForm, dispatch]);
 
   const editIdx = useMemo(
-    () => editingId ? state.recurring.findIndex(r => r.id === editingId) : -1,
-    [editingId, state.recurring]
+    () => editingId ? yearRecurring.findIndex(r => r.id === editingId) : -1,
+    [editingId, yearRecurring]
   );
 
   function navigateRow(dir: 1 | -1) {
     saveEdit();
     const next = editIdx + dir;
-    if (next >= 0 && next < state.recurring.length) {
-      startEdit(state.recurring[next]);
+    if (next >= 0 && next < yearRecurring.length) {
+      startEdit(yearRecurring[next]);
     }
   }
 
@@ -146,7 +157,7 @@ export default function RecurringPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Recurring</h2>
-          <p className="text-gray-500 text-sm mt-1">≈ ${totalMonthly.toFixed(2)} / month · auto-added to each month's transactions</p>
+          <p className="text-gray-500 text-sm mt-1">{selectedYear} · ≈ ${totalMonthly.toFixed(2)} / month · auto-added to transactions</p>
         </div>
         <button onClick={() => setShowForm(v => !v)}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
@@ -274,7 +285,7 @@ export default function RecurringPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {state.recurring.map(item => {
+            {yearRecurring.map(item => {
               const isEditing = editingId === item.id;
               const next = nextOccurrenceDate(item);
               const due = next <= today;
@@ -359,8 +370,8 @@ export default function RecurringPage() {
                 </tr>
               );
             })}
-            {state.recurring.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No recurring items yet</td></tr>
+            {yearRecurring.length === 0 && (
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No recurring items for {selectedYear}</td></tr>
             )}
           </tbody>
           <tfoot>
