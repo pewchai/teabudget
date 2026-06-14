@@ -1,13 +1,13 @@
 import { createContext, useContext, useReducer, useEffect, useState, type ReactNode } from 'react';
 import {
   type Transaction, type RecurringItem, type BudgetsByMonth,
-  type CategoryConfig, type MonthlyBudgets, DEFAULT_CATEGORIES,
+  type CategoryConfig, DEFAULT_CATEGORIES,
 } from '../types';
 import seedTransactions from '../data/transactions.json';
 import seedRecurring from '../data/recurring.json';
 import seedBudgets from '../data/budgets.json';
 
-const DATA_VERSION = '4';
+const DATA_VERSION = '5';
 
 interface State {
   transactions: Transaction[];
@@ -89,13 +89,9 @@ function buildSeedState(): State {
     frequencyType: r.frequencyType as RecurringItem['frequencyType'],
   }));
 
-  const budgets: BudgetsByMonth = {};
-  const rawBudgets = seedBudgets as Record<string, Partial<MonthlyBudgets>>;
-  for (const [monthNum, cats] of Object.entries(rawBudgets)) {
-    budgets[`2026-${String(monthNum).padStart(2, '0')}`] = cats;
-  }
+  const budgets: BudgetsByMonth = seedBudgets as BudgetsByMonth;
 
-  return { transactions, recurring, budgets, categories: [...DEFAULT_CATEGORIES], years: [2026] };
+  return { transactions, recurring, budgets, categories: [...DEFAULT_CATEGORIES], years: [2025, 2026] };
 }
 
 function loadInitialState(): State {

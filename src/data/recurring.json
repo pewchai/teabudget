@@ -1,6 +1,22 @@
 [
   {
-    "startDate": "2026-06-01",
+    "startDate": "2025-01-01",
+    "amount": 1550.00,
+    "category": "Operations",
+    "description": "rent",
+    "frequencyType": "months",
+    "frequencyValue": 1
+  },
+  {
+    "startDate": "2025-01-15",
+    "amount": 387.00,
+    "category": "Operations",
+    "description": "car loan",
+    "frequencyType": "months",
+    "frequencyValue": 1
+  },
+  {
+    "startDate": "2025-01-01",
     "amount": 73.00,
     "category": "Operations",
     "description": "storage unit",
@@ -8,7 +24,15 @@
     "frequencyValue": 1
   },
   {
-    "startDate": "2026-06-10",
+    "startDate": "2025-03-01",
+    "amount": 920.00,
+    "category": "Operations",
+    "description": "car insurance",
+    "frequencyType": "months",
+    "frequencyValue": 6
+  },
+  {
+    "startDate": "2025-01-10",
     "amount": 55.50,
     "category": "Services",
     "description": "AT&T",
@@ -16,11 +40,27 @@
     "frequencyValue": 1
   },
   {
-    "startDate": "2026-09-15",
-    "amount": 800.00,
-    "category": "Operations",
-    "description": "car insurance",
+    "startDate": "2025-01-05",
+    "amount": 65.00,
+    "category": "Services",
+    "description": "internet",
     "frequencyType": "months",
-    "frequencyValue": 6
+    "frequencyValue": 1
+  },
+  {
+    "startDate": "2025-01-20",
+    "amount": 17.99,
+    "category": "Services",
+    "description": "Netflix",
+    "frequencyType": "months",
+    "frequencyValue": 1
+  },
+  {
+    "startDate": "2025-01-20",
+    "amount": 10.99,
+    "category": "Services",
+    "description": "Spotify",
+    "frequencyType": "months",
+    "frequencyValue": 1
   }
 ]

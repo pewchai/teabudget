@@ -63,10 +63,7 @@ export default function TopBar() {
         <div className="shrink-0 flex items-center px-3 border-l border-gray-100">
           <select
             value={selectedYear}
-            onChange={e => {
-              setSelectedYear(parseInt(e.target.value));
-              navigate('/year');
-            }}
+            onChange={e => setSelectedYear(parseInt(e.target.value))}
             className="text-sm font-bold text-gray-800 bg-white border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
             {state.years.map(y => <option key={y} value={y}>{y}</option>)}
