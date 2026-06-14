@@ -4,6 +4,7 @@ import { useBudget } from '../store/BudgetContext';
 import { MONTH_NAMES } from '../types';
 
 const CURRENT_MONTH = new Date().getMonth() + 1;
+const CURRENT_YEAR = new Date().getFullYear();
 
 export default function TopBar() {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export default function TopBar() {
             {MONTH_NAMES.map((name, i) => {
               const m = i + 1;
               const active = activeMonth === m;
-              const isCurrent = m === CURRENT_MONTH;
+              const isCurrent = m === CURRENT_MONTH && selectedYear === CURRENT_YEAR;
               return (
                 <button
                   key={name}
