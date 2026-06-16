@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useBudget, getMonthTransactions, sumByCategory } from '../store/BudgetContext';
 import { MONTH_NAMES, type Transaction } from '../types';
@@ -80,6 +80,20 @@ export default function MonthPage() {
   }, [txs, YEAR, month, activeCats]);
 
   const fmtLeft = (n: number) => n < 0 ? `($${Math.abs(n).toFixed(0)})` : `$${n.toFixed(0)}`;
+
+  const monthIncome = (state.income ?? {})[monthKey] ?? 0;
+  const headroom = monthIncome - totalBudget;
+
+  const [editingIncome, setEditingIncome] = useState(false);
+  const [incomeVal, setIncomeVal] = useState('');
+  const incomeInputRef = useRef<HTMLInputElement>(null);
+
+  function startIncomeEdit() { setEditingIncome(true); setIncomeVal(String(monthIncome)); }
+  function commitIncome() {
+    const val = parseFloat(incomeVal);
+    if (!isNaN(val) && val >= 0) dispatch({ type: 'SET_INCOME', monthKey, amount: val });
+    setEditingIncome(false);
+  }
 
   const [chartView, setChartView] = useState<ChartView>('breakdown');
   const [editingCat, setEditingCat] = useState<string | null>(null);
@@ -197,6 +211,44 @@ export default function MonthPage() {
               </LineChart>
             )}
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Income card */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Monthly Income</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <p className="text-xs text-gray-400 mb-1">Income</p>
+            {editingIncome ? (
+              <div className="flex items-baseline gap-0.5">
+                <span className="text-gray-400 text-sm">$</span>
+                <input
+                  ref={incomeInputRef}
+                  type="number" step="0.01" autoFocus value={incomeVal}
+                  onChange={e => setIncomeVal(e.target.value)}
+                  onBlur={commitIncome}
+                  onKeyDown={e => { if (e.key === 'Enter') commitIncome(); if (e.key === 'Escape') setEditingIncome(false); }}
+                  className="w-24 font-bold text-gray-900 border border-blue-400 rounded px-1.5 py-0.5 text-base focus:outline-none"
+                />
+              </div>
+            ) : (
+              <button onClick={startIncomeEdit}
+                className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors tabular-nums" title="Tap to edit">
+                ${monthIncome.toLocaleString()}
+              </button>
+            )}
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-1">Budgeted</p>
+            <p className="text-xl font-bold text-gray-900 tabular-nums">${totalBudget.toLocaleString()}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-1">Headroom</p>
+            <p className={`text-xl font-bold tabular-nums ${headroom < 0 ? 'text-red-500' : monthIncome === 0 ? 'text-gray-300' : 'text-emerald-600'}`}>
+              {monthIncome === 0 ? '—' : headroom < 0 ? `($${Math.abs(headroom).toLocaleString()})` : `$${headroom.toLocaleString()}`}
+            </p>
+          </div>
         </div>
       </div>
 

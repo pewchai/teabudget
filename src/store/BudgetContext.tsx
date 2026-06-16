@@ -7,7 +7,7 @@ import seedTransactions from '../data/transactions.json';
 import seedRecurring from '../data/recurring.json';
 import seedBudgets from '../data/budgets.json';
 
-const DATA_VERSION = '5';
+const DATA_VERSION = '6';
 
 interface State {
   transactions: Transaction[];
@@ -15,6 +15,7 @@ interface State {
   budgets: BudgetsByMonth;
   categories: CategoryConfig[];
   years: number[];
+  income: Record<string, number>;
 }
 
 type Action =
@@ -25,6 +26,7 @@ type Action =
   | { type: 'UPDATE_RECURRING'; item: RecurringItem }
   | { type: 'DELETE_RECURRING'; id: string }
   | { type: 'SET_BUDGET'; monthKey: string; category: string; amount: number }
+  | { type: 'SET_INCOME'; monthKey: string; amount: number }
   | { type: 'ADD_CATEGORY'; cat: CategoryConfig }
   | { type: 'UPDATE_CATEGORY'; id: string; name: string; color: string; oldName: string }
   | { type: 'DELETE_CATEGORY'; id: string }
@@ -49,6 +51,8 @@ function reducer(state: State, action: Action): State {
       const existing = state.budgets[action.monthKey] ?? {};
       return { ...state, budgets: { ...state.budgets, [action.monthKey]: { ...existing, [action.category]: action.amount } } };
     }
+    case 'SET_INCOME':
+      return { ...state, income: { ...state.income, [action.monthKey]: action.amount } };
     case 'ADD_CATEGORY':
       return { ...state, categories: [...state.categories, action.cat] };
     case 'UPDATE_CATEGORY':
@@ -91,14 +95,22 @@ function buildSeedState(): State {
 
   const budgets: BudgetsByMonth = seedBudgets as BudgetsByMonth;
 
-  return { transactions, recurring, budgets, categories: [...DEFAULT_CATEGORIES], years: [2025, 2026] };
+  const income: Record<string, number> = {};
+  for (let m = 1; m <= 12; m++) {
+    income[`2025-${String(m).padStart(2, '0')}`] = 5200;
+  }
+
+  return { transactions, recurring, budgets, categories: [...DEFAULT_CATEGORIES], years: [2025, 2026], income };
 }
 
 function loadInitialState(): State {
   const saved = localStorage.getItem('krindbudget');
   const version = localStorage.getItem('krindbudget_version');
   if (saved && version === DATA_VERSION) {
-    try { return JSON.parse(saved) as State; } catch { /* fall through */ }
+    try {
+      const parsed = JSON.parse(saved) as Partial<State>;
+      return { income: {}, ...parsed } as State;
+    } catch { /* fall through */ }
   }
   return buildSeedState();
 }

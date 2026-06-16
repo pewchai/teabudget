@@ -73,7 +73,12 @@ export default function OverviewPage() {
 
   const totalActual = monthlyData.reduce((s, m) => s + m.actual, 0);
   const totalBudget = monthlyData.reduce((s, m) => s + m.budget, 0);
-  const remaining = totalBudget - totalActual;
+  const totalIncome = useMemo(() =>
+    Array.from({ length: 12 }, (_, i) => `${YEAR}-${String(i + 1).padStart(2, '0')}`)
+      .reduce((s, mk) => s + ((state.income ?? {})[mk] ?? 0), 0),
+    [state.income, YEAR]
+  );
+  const annualHeadroom = totalIncome - totalBudget;
 
   return (
     <div className="p-4 md:p-6 space-y-8">
@@ -141,15 +146,24 @@ export default function OverviewPage() {
       </div>
 
       {/* Year stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: `Spent in ${YEAR}`, value: `$${totalActual.toLocaleString()}` },
-          { label: `Budgeted in ${YEAR}`, value: `$${totalBudget.toLocaleString()}` },
-          { label: 'Remaining', value: `$${remaining.toLocaleString()}`, red: remaining < 0 },
+          { label: `Spent`, value: `$${totalActual.toLocaleString()}` },
+          { label: `Budgeted`, value: `$${totalBudget.toLocaleString()}` },
+          { label: `Income`, value: totalIncome > 0 ? `$${totalIncome.toLocaleString()}` : '—', dim: totalIncome === 0 },
+          {
+            label: 'Headroom',
+            value: totalIncome === 0 ? '—' : annualHeadroom < 0
+              ? `($${Math.abs(annualHeadroom).toLocaleString()})`
+              : `$${annualHeadroom.toLocaleString()}`,
+            red: annualHeadroom < 0 && totalIncome > 0,
+            green: annualHeadroom >= 0 && totalIncome > 0,
+            dim: totalIncome === 0,
+          },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-sm text-gray-500">{s.label}</p>
-            <p className={`text-2xl font-bold mt-1 ${s.red ? 'text-red-500' : 'text-gray-900'}`}>{s.value}</p>
+            <p className="text-xs text-gray-500 uppercase font-semibold tracking-wide">{s.label}</p>
+            <p className={`text-xl font-bold mt-1 ${s.red ? 'text-red-500' : s.green ? 'text-emerald-600' : s.dim ? 'text-gray-300' : 'text-gray-900'}`}>{s.value}</p>
           </div>
         ))}
       </div>

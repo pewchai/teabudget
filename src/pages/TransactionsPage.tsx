@@ -1,9 +1,15 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useBudget } from '../store/BudgetContext';
 import { type Transaction } from '../types';
 import { nanoid } from 'nanoid';
 
 const TODAY = new Date().toISOString().slice(0, 10);
+
+const CURRENCIES = [
+  'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'MXN', 'CHF', 'CNY',
+  'KRW', 'BRL', 'ILS', 'THB', 'SGD', 'HKD', 'INR', 'NZD', 'SEK',
+  'NOK', 'DKK', 'PLN', 'CZK', 'HUF', 'TRY', 'AED', 'PHP',
+];
 
 function fmtDate(d: string) {
   const [y, m, day] = d.split('-');
@@ -20,15 +26,46 @@ export default function TransactionsPage() {
 
   // Add form (always visible above table)
   const [newForm, setNewForm] = useState({
-    date: TODAY, amount: '', category: catNames[0] ?? '', description: '',
+    date: TODAY, amount: '', currency: 'USD', category: catNames[0] ?? '', description: '',
   });
+  const [convertedUSD, setConvertedUSD] = useState<number | null>(null);
+  const [rateStatus, setRateStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const rateCache = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    const raw = parseFloat(newForm.amount);
+    if (isNaN(raw) || newForm.currency === 'USD') {
+      setConvertedUSD(newForm.currency === 'USD' && !isNaN(raw) ? raw : null);
+      setRateStatus('idle');
+      return;
+    }
+    setRateStatus('loading');
+    const timer = setTimeout(async () => {
+      try {
+        let rate = rateCache.current[newForm.currency];
+        if (!rate) {
+          const res = await fetch(`https://api.frankfurter.app/latest?from=${newForm.currency}&to=USD`);
+          const data = await res.json() as { rates: Record<string, number> };
+          rate = data.rates['USD'];
+          rateCache.current[newForm.currency] = rate;
+        }
+        setConvertedUSD(Math.round(raw * rate * 100) / 100);
+        setRateStatus('idle');
+      } catch {
+        setRateStatus('error');
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [newForm.amount, newForm.currency]);
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    const amount = parseFloat(newForm.amount);
-    if (isNaN(amount) || !newForm.category) return;
+    const raw = parseFloat(newForm.amount);
+    if (isNaN(raw) || !newForm.category) return;
+    const amount = newForm.currency === 'USD' ? raw : (convertedUSD ?? raw);
     dispatch({ type: 'ADD_TRANSACTION', tx: { id: nanoid(), date: newForm.date, amount, category: newForm.category, description: newForm.description } });
     setNewForm(f => ({ ...f, amount: '', description: '' }));
+    setConvertedUSD(null);
   }
 
   // Filters
@@ -101,10 +138,24 @@ export default function TransactionsPage() {
               className={FIELD} />
           </label>
           <label className="block min-w-0">
-            <span className="text-xs font-medium text-gray-500 uppercase">Amount ($)</span>
-            <input type="number" step="0.01" min="0" required placeholder="0.00" value={newForm.amount}
-              onChange={e => setNewForm(f => ({ ...f, amount: e.target.value }))}
-              className={FIELD} />
+            <span className="text-xs font-medium text-gray-500 uppercase">Amount</span>
+            <div className="flex gap-1.5 mt-1">
+              <input type="number" step="0.01" min="0" required placeholder="0.00" value={newForm.amount}
+                onChange={e => setNewForm(f => ({ ...f, amount: e.target.value }))}
+                className="flex-1 min-w-0 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <select value={newForm.currency}
+                onChange={e => setNewForm(f => ({ ...f, currency: e.target.value }))}
+                className="border border-gray-200 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                {CURRENCIES.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            {newForm.currency !== 'USD' && newForm.amount && (
+              <p className="text-xs mt-1.5 text-gray-400">
+                {rateStatus === 'loading' ? 'Fetching rate…' :
+                 rateStatus === 'error' ? 'Rate unavailable' :
+                 convertedUSD !== null ? `≈ $${convertedUSD.toFixed(2)} USD (ECB rate)` : ''}
+              </p>
+            )}
           </label>
           <label className="block min-w-0">
             <span className="text-xs font-medium text-gray-500 uppercase">Category</span>
