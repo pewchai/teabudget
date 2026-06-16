@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 
 const ITEMS = [
   {
@@ -49,25 +49,44 @@ const ITEMS = [
 ];
 
 export default function FloatingNav() {
+  const { pathname } = useLocation();
+
+  const activeIndex = (() => {
+    if (pathname === '/') return 1;
+    for (let i = 0; i < ITEMS.length; i++) {
+      const item = ITEMS[i];
+      if (item.to !== '/' && pathname.startsWith(item.to)) return i;
+    }
+    return -1;
+  })();
+
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-sm border-t border-gray-200">
-      <div className="flex max-w-3xl mx-auto px-1 pt-1 pb-2">
-        {ITEMS.map(item => (
-          <NavLink key={item.to} to={item.to} end={item.end} className="flex-1">
-            {({ isActive }) => (
-              <div className="flex flex-col items-center gap-0.5">
-                <div className={`rounded-full px-4 py-1 transition-all ${
-                  isActive ? 'bg-blue-100 text-blue-600' : 'text-gray-400'
+    <nav className="fixed bottom-0 inset-x-0 z-40 px-4 pb-5">
+      <div className="max-w-3xl mx-auto">
+        <div className="relative flex items-stretch bg-gray-100 rounded-2xl shadow-lg shadow-black/10 ring-1 ring-black/5">
+          {/* Sliding pill */}
+          {activeIndex >= 0 && (
+            <div
+              className="absolute inset-y-1 pointer-events-none transition-transform duration-300 ease-out"
+              style={{ width: '25%', transform: `translateX(${activeIndex * 100}%)` }}
+            >
+              <div className="mx-1 h-full bg-white rounded-xl shadow-sm" />
+            </div>
+          )}
+
+          {ITEMS.map(item => (
+            <NavLink key={item.to} to={item.to} end={item.end} className="flex-1 relative z-10">
+              {({ isActive }) => (
+                <div className={`flex flex-col items-center py-2.5 gap-0.5 transition-colors duration-200 ${
+                  isActive ? 'text-blue-600' : 'text-gray-400'
                 }`}>
                   {item.icon}
+                  <span className="text-[10px] font-semibold tracking-wide uppercase">{item.label}</span>
                 </div>
-                <span className={`text-[10px] font-medium ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
-                  {item.label}
-                </span>
-              </div>
-            )}
-          </NavLink>
-        ))}
+              )}
+            </NavLink>
+          ))}
+        </div>
       </div>
     </nav>
   );
