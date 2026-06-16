@@ -79,6 +79,8 @@ export default function MonthPage() {
     });
   }, [txs, YEAR, month, activeCats]);
 
+  const fmtLeft = (n: number) => n < 0 ? `($${Math.abs(n).toFixed(0)})` : `$${n.toFixed(0)}`;
+
   const [chartView, setChartView] = useState<ChartView>('breakdown');
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editVal, setEditVal] = useState('');
@@ -231,7 +233,7 @@ export default function MonthPage() {
                 </td>
                 <td className="px-3 py-2.5 text-right font-medium text-gray-900 tabular-nums">${actual.toFixed(2)}</td>
                 <td className={`px-3 py-2.5 text-right font-semibold tabular-nums ${diff < 0 ? 'text-red-500' : budget === 0 && actual === 0 ? 'text-gray-300' : 'text-emerald-600'}`}>
-                  {budget === 0 && actual === 0 ? '—' : `${diff < 0 ? '-' : ''}$${Math.abs(diff).toFixed(0)}`}
+                  {budget === 0 && actual === 0 ? '—' : fmtLeft(diff)}
                 </td>
               </tr>
             ))}
@@ -242,7 +244,7 @@ export default function MonthPage() {
               <td className="px-3 py-2.5 text-right text-gray-700 tabular-nums">${totalBudget.toFixed(0)}</td>
               <td className="px-3 py-2.5 text-right text-gray-900 tabular-nums">${totalActual.toFixed(2)}</td>
               <td className={`px-3 py-2.5 text-right tabular-nums ${totalDiff < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-                {totalDiff < 0 ? '-' : ''}${Math.abs(totalDiff).toFixed(0)}
+                {fmtLeft(totalDiff)}
               </td>
             </tr>
           </tfoot>

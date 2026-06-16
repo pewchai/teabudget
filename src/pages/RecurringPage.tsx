@@ -3,7 +3,7 @@ import { useBudget, nextOccurrenceDate, frequencyLabel } from '../store/BudgetCo
 import { type RecurringItem, type FrequencyType } from '../types';
 import { nanoid } from 'nanoid';
 
-const FIELD = 'mt-1 block w-full h-10 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white';
+const FIELD = 'mt-1 block w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 const EDIT_CELL = 'w-full bg-blue-50 border-b border-blue-300 px-1 py-0.5 text-sm focus:outline-none focus:bg-blue-100';
 
 
@@ -127,8 +127,6 @@ export default function RecurringPage() {
     if (e.key === 'ArrowUp') { e.preventDefault(); navigateRow(-1); }
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -145,19 +143,19 @@ export default function RecurringPage() {
       {showForm && (
         <form onSubmit={handleAdd} className="bg-white border border-gray-200 rounded-xl p-5 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <label className="block">
+            <label className="block min-w-0">
               <span className="text-xs font-medium text-gray-500 uppercase">First billing date</span>
               <input type="date" required value={form.startDate}
                 onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
                 className={FIELD} />
             </label>
-            <label className="block">
+            <label className="block min-w-0">
               <span className="text-xs font-medium text-gray-500 uppercase">Amount ($)</span>
               <input type="number" step="0.01" min="0" required placeholder="0.00" value={form.amount}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
                 className={FIELD} />
             </label>
-            <label className="block">
+            <label className="block min-w-0">
               <span className="text-xs font-medium text-gray-500 uppercase">Category</span>
               <select required value={form.category}
                 onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
@@ -166,7 +164,7 @@ export default function RecurringPage() {
                 {catNames.map(c => <option key={c}>{c}</option>)}
               </select>
             </label>
-            <label className="block">
+            <label className="block min-w-0">
               <span className="text-xs font-medium text-gray-500 uppercase">Description</span>
               <input type="text" required value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
@@ -220,7 +218,6 @@ export default function RecurringPage() {
             {yearRecurring.map(item => {
               const isEditing = editingId === item.id;
               const next = nextOccurrenceDate(item);
-              const due = next <= today;
               const color = colorMap[item.category] ?? '#9ca3af';
               const monthlyEq = item.frequencyType === 'days'
                 ? item.amount / (item.frequencyValue / 30.44)
@@ -292,9 +289,7 @@ export default function RecurringPage() {
                   <td className="px-4 py-3 text-right font-semibold text-gray-900">${item.amount.toFixed(2)}</td>
                   <td className="px-4 py-3 text-right text-gray-500 text-xs">${monthlyEq.toFixed(2)}</td>
                   <td className="px-4 py-3 text-center text-gray-600 text-xs">{frequencyLabel(item)}</td>
-                  <td className={`px-4 py-3 font-mono text-xs ${due ? 'text-amber-500 font-semibold' : 'text-gray-500'}`}>
-                    {next}
-                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-500">{next}</td>
                   <td className="px-2 py-3">
                     <button onClick={e => { e.stopPropagation(); dispatch({ type: 'DELETE_RECURRING', id: item.id }); }}
                       className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all">✕</button>

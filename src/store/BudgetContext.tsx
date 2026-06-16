@@ -208,7 +208,8 @@ export function nextOccurrenceDate(item: RecurringItem): string {
     const todayMs = new Date(todayStr + 'T12:00:00Z').getTime();
     const freqMs = item.frequencyValue * 86_400_000;
     const periods = Math.ceil((todayMs - startMs) / freqMs);
-    return new Date(startMs + periods * freqMs).toISOString().slice(0, 10);
+    const next = new Date(startMs + periods * freqMs).toISOString().slice(0, 10);
+    return next >= todayStr ? next : new Date(startMs + (periods + 1) * freqMs).toISOString().slice(0, 10);
   }
 
   if (item.frequencyType === 'months') {
@@ -216,22 +217,30 @@ export function nextOccurrenceDate(item: RecurringItem): string {
     const smIdx = start.getUTCMonth(), sy = start.getUTCFullYear(), sd = start.getUTCDate();
     const tmIdx = today.getUTCMonth(), ty = today.getUTCFullYear();
     const diff = (ty - sy) * 12 + (tmIdx - smIdx);
+    const calcMonth = (p: number) => {
+      const monthIdx = smIdx + p * item.frequencyValue;
+      const ny = sy + Math.floor(monthIdx / 12);
+      const nm = monthIdx % 12;
+      const day = Math.min(sd, daysInMonth(ny, nm + 1));
+      return `${ny}-${String(nm + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    };
     const periods = Math.ceil(diff / item.frequencyValue);
-    const nextMonthIdx = smIdx + periods * item.frequencyValue;
-    const ny = sy + Math.floor(nextMonthIdx / 12);
-    const nm = (nextMonthIdx % 12); // 0-indexed
-    const day = Math.min(sd, daysInMonth(ny, nm + 1));
-    return `${ny}-${String(nm + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const next = calcMonth(periods);
+    return next >= todayStr ? next : calcMonth(periods + 1);
   }
 
   // years
   const today = new Date(todayStr + 'T12:00:00Z');
   const sy = start.getUTCFullYear(), smIdx = start.getUTCMonth(), sd = start.getUTCDate();
   const ty = today.getUTCFullYear();
+  const calcYear = (p: number) => {
+    const ny = sy + p * item.frequencyValue;
+    const day = Math.min(sd, daysInMonth(ny, smIdx + 1));
+    return `${ny}-${String(smIdx + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  };
   const periods = Math.ceil((ty - sy) / item.frequencyValue);
-  const ny = sy + periods * item.frequencyValue;
-  const day = Math.min(sd, daysInMonth(ny, smIdx + 1));
-  return `${ny}-${String(smIdx + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  const next = calcYear(periods);
+  return next >= todayStr ? next : calcYear(periods + 1);
 }
 
 export function frequencyLabel(item: RecurringItem): string {

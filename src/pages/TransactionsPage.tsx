@@ -10,7 +10,7 @@ function fmtDate(d: string) {
   return `${m}/${day}/${y.slice(2)}`;
 }
 
-const FIELD = 'mt-1 block w-full h-10 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white';
+const FIELD = 'mt-1 block w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 const EDIT_CELL = 'w-full bg-blue-50 border-b border-blue-300 px-1 py-0.5 text-sm focus:outline-none focus:bg-blue-100';
 
 export default function TransactionsPage() {
