@@ -1,6 +1,6 @@
 import { createContext, useContext, useReducer, useEffect, useState, type ReactNode } from 'react';
 import {
-  type Transaction, type RecurringItem, type BudgetsByMonth,
+  type Transaction, type RecurringItem, type BudgetsByMonth, type IncomeByMonth,
   type CategoryConfig, DEFAULT_CATEGORIES,
 } from '../types';
 import seedTransactions from '../data/transactions.json';
@@ -15,7 +15,7 @@ interface State {
   budgets: BudgetsByMonth;
   categories: CategoryConfig[];
   years: number[];
-  income: Record<string, number>;
+  income: IncomeByMonth;
 }
 
 type Action =
@@ -95,7 +95,7 @@ function buildSeedState(): State {
 
   const budgets: BudgetsByMonth = seedBudgets as BudgetsByMonth;
 
-  const income: Record<string, number> = {};
+  const income: IncomeByMonth = {};
   for (let m = 1; m <= 12; m++) {
     income[`2025-${String(m).padStart(2, '0')}`] = 5200;
   }

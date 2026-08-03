@@ -39,16 +39,19 @@ export default function TransactionsPage() {
       setRateStatus('idle');
       return;
     }
+    const cached = rateCache.current[newForm.currency];
+    if (cached) {
+      setConvertedUSD(Math.round(raw * cached * 100) / 100);
+      setRateStatus('idle');
+      return;
+    }
     setRateStatus('loading');
     const timer = setTimeout(async () => {
       try {
-        let rate = rateCache.current[newForm.currency];
-        if (!rate) {
-          const res = await fetch(`https://api.frankfurter.app/latest?from=${newForm.currency}&to=USD`);
-          const data = await res.json() as { rates: Record<string, number> };
-          rate = data.rates['USD'];
-          rateCache.current[newForm.currency] = rate;
-        }
+        const res = await fetch(`https://api.frankfurter.app/latest?from=${newForm.currency}&to=USD`);
+        const data = await res.json() as { rates: Record<string, number> };
+        const rate = data.rates['USD'];
+        rateCache.current[newForm.currency] = rate;
         setConvertedUSD(Math.round(raw * rate * 100) / 100);
         setRateStatus('idle');
       } catch {
@@ -62,7 +65,7 @@ export default function TransactionsPage() {
     e.preventDefault();
     const raw = parseFloat(newForm.amount);
     if (isNaN(raw) || !newForm.category) return;
-    const amount = newForm.currency === 'USD' ? raw : (convertedUSD ?? raw);
+    const amount = convertedUSD ?? raw;
     dispatch({ type: 'ADD_TRANSACTION', tx: { id: nanoid(), date: newForm.date, amount, category: newForm.category, description: newForm.description } });
     setNewForm(f => ({ ...f, amount: '', description: '' }));
     setConvertedUSD(null);

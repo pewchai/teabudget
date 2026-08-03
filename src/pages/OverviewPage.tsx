@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBudget, getMonthTransactions, sumByCategory } from '../store/BudgetContext';
-import { MONTH_NAMES } from '../types';
+import { MONTH_NAMES, fmtSigned } from '../types';
 import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
   LineChart, Line, CartesianGrid, ComposedChart, Bar,
@@ -25,7 +25,7 @@ export default function OverviewPage() {
 
   const [chartView, setChartView] = useState<ChartView>('breakdown');
 
-  // Monthly actual + budget, with running cumulative lines
+  // Monthly actual + budget + income, with running cumulative lines
   const monthlyData = useMemo(() => {
     let cumActual = 0, cumBudget = 0;
     return MONTH_NAMES.map((name, i) => {
@@ -35,9 +35,10 @@ export default function OverviewPage() {
       const budgets = state.budgets[monthKey] ?? {};
       const actual = Math.round(txs.reduce((s, t) => s + t.amount, 0));
       const budget = Math.round(Object.values(budgets).reduce((s: number, v) => s + (v ?? 0), 0));
+      const income = state.income[monthKey] ?? 0;
       cumActual += actual;
       cumBudget += budget;
-      return { name: name.slice(0, 3), actual, budget, cumActual, cumBudget };
+      return { name: name.slice(0, 3), actual, budget, income, cumActual, cumBudget };
     });
   }, [state, YEAR]);
 
@@ -73,11 +74,7 @@ export default function OverviewPage() {
 
   const totalActual = monthlyData.reduce((s, m) => s + m.actual, 0);
   const totalBudget = monthlyData.reduce((s, m) => s + m.budget, 0);
-  const totalIncome = useMemo(() =>
-    Array.from({ length: 12 }, (_, i) => `${YEAR}-${String(i + 1).padStart(2, '0')}`)
-      .reduce((s, mk) => s + ((state.income ?? {})[mk] ?? 0), 0),
-    [state.income, YEAR]
-  );
+  const totalIncome = monthlyData.reduce((s, m) => s + m.income, 0);
   const annualHeadroom = totalIncome - totalBudget;
 
   return (
@@ -153,9 +150,7 @@ export default function OverviewPage() {
           { label: `Income`, value: totalIncome > 0 ? `$${totalIncome.toLocaleString()}` : '—', dim: totalIncome === 0 },
           {
             label: 'Headroom',
-            value: totalIncome === 0 ? '—' : annualHeadroom < 0
-              ? `($${Math.abs(annualHeadroom).toLocaleString()})`
-              : `$${annualHeadroom.toLocaleString()}`,
+            value: totalIncome === 0 ? '—' : fmtSigned(annualHeadroom),
             red: annualHeadroom < 0 && totalIncome > 0,
             green: annualHeadroom >= 0 && totalIncome > 0,
             dim: totalIncome === 0,

@@ -1,7 +1,7 @@
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useBudget, getMonthTransactions, sumByCategory } from '../store/BudgetContext';
-import { MONTH_NAMES, type Transaction } from '../types';
+import { MONTH_NAMES, fmtSigned, type Transaction } from '../types';
 import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
   LineChart, Line, CartesianGrid, ComposedChart, Bar,
@@ -79,14 +79,11 @@ export default function MonthPage() {
     });
   }, [txs, YEAR, month, activeCats]);
 
-  const fmtLeft = (n: number) => n < 0 ? `($${Math.abs(n).toFixed(0)})` : `$${n.toFixed(0)}`;
-
-  const monthIncome = (state.income ?? {})[monthKey] ?? 0;
+  const monthIncome = state.income[monthKey] ?? 0;
   const headroom = monthIncome - totalBudget;
 
   const [editingIncome, setEditingIncome] = useState(false);
   const [incomeVal, setIncomeVal] = useState('');
-  const incomeInputRef = useRef<HTMLInputElement>(null);
 
   function startIncomeEdit() { setEditingIncome(true); setIncomeVal(String(monthIncome)); }
   function commitIncome() {
@@ -224,7 +221,6 @@ export default function MonthPage() {
               <div className="flex items-baseline gap-0.5">
                 <span className="text-gray-400 text-sm">$</span>
                 <input
-                  ref={incomeInputRef}
                   type="number" step="0.01" autoFocus value={incomeVal}
                   onChange={e => setIncomeVal(e.target.value)}
                   onBlur={commitIncome}
@@ -246,7 +242,7 @@ export default function MonthPage() {
           <div>
             <p className="text-xs text-gray-400 mb-1">Headroom</p>
             <p className={`text-xl font-bold tabular-nums ${headroom < 0 ? 'text-red-500' : monthIncome === 0 ? 'text-gray-300' : 'text-emerald-600'}`}>
-              {monthIncome === 0 ? '—' : headroom < 0 ? `($${Math.abs(headroom).toLocaleString()})` : `$${headroom.toLocaleString()}`}
+              {monthIncome === 0 ? '—' : fmtSigned(headroom)}
             </p>
           </div>
         </div>
@@ -285,7 +281,7 @@ export default function MonthPage() {
                 </td>
                 <td className="px-3 py-2.5 text-right font-medium text-gray-900 tabular-nums">${actual.toFixed(2)}</td>
                 <td className={`px-3 py-2.5 text-right font-semibold tabular-nums ${diff < 0 ? 'text-red-500' : budget === 0 && actual === 0 ? 'text-gray-300' : 'text-emerald-600'}`}>
-                  {budget === 0 && actual === 0 ? '—' : fmtLeft(diff)}
+                  {budget === 0 && actual === 0 ? '—' : fmtSigned(diff)}
                 </td>
               </tr>
             ))}
@@ -296,7 +292,7 @@ export default function MonthPage() {
               <td className="px-3 py-2.5 text-right text-gray-700 tabular-nums">${totalBudget.toFixed(0)}</td>
               <td className="px-3 py-2.5 text-right text-gray-900 tabular-nums">${totalActual.toFixed(2)}</td>
               <td className={`px-3 py-2.5 text-right tabular-nums ${totalDiff < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-                {fmtLeft(totalDiff)}
+                {fmtSigned(totalDiff)}
               </td>
             </tr>
           </tfoot>

@@ -41,8 +41,15 @@ export interface RecurringItem {
 
 export type MonthlyBudgets = Record<string, number>;
 export type BudgetsByMonth = Record<string, Partial<MonthlyBudgets>>;
+export type IncomeByMonth = Record<string, number>;
 
 export const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
+
+// Negative amounts in parentheses, e.g. -160 -> "($160)"
+export function fmtSigned(n: number, decimals = 0): string {
+  const abs = Math.abs(n).toFixed(decimals);
+  return n < 0 ? `($${abs})` : `$${abs}`;
+}
